@@ -14,8 +14,9 @@ import {
   subscribeToProject,
   subscribeToTasks,
   subscribeToMessages,
+  getProjectMembers,
 } from "@/lib/firestore"
-import type { Project, Task, ChatMessage, IdeaAnalysis } from "@/lib/types"
+import type { Project, Task, ChatMessage, IdeaAnalysis, ProjectMember } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -64,6 +65,7 @@ export default function ProjectPage() {
   const projectId = params.id as string
 
   const [project, setProject] = useState<Project | null>(null)
+  const [members, setMembers] = useState<ProjectMember[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
@@ -170,6 +172,13 @@ export default function ProjectPage() {
       mounted = false
     }
   }, [projectId, user, authLoading, router])
+
+  // Load members when project changes
+  useEffect(() => {
+    if (project?.members) {
+      getProjectMembers(project.members).then(setMembers)
+    }
+  }, [project?.members])
 
   const callApiWithRetry = async (action: string, apiCall: () => Promise<Response>): Promise<any> => {
     const response = await apiCall()
@@ -831,16 +840,16 @@ export default function ProjectPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {project.members?.map((memberId, i) => (
-                    <div key={memberId} className="flex items-center gap-3 p-3 rounded-lg border">
+                  {members.map((member) => (
+                    <div key={member.user_id} className="flex items-center gap-3 p-3 rounded-lg border">
                       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                         <Users className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-medium">{memberId === project.owner ? "Owner" : `Member ${i + 1}`}</p>
-                        <p className="text-sm text-muted-foreground">{memberId.slice(0, 8)}...</p>
+                        <p className="font-medium">{member.name}</p>
+                        <p className="text-sm text-muted-foreground">{member.email}</p>
                       </div>
-                      {memberId === project.owner && <Badge className="ml-auto">Owner</Badge>}
+                      {member.user_id === project.created_by && <Badge className="ml-auto">Owner</Badge>}
                     </div>
                   ))}
                 </div>
