@@ -128,11 +128,11 @@ export default function DemoPage({ params }: { params: Promise<{ id: string }> }
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-3">
-                  {project.idea.target_users.map((user, i) => (
+                  {project.idea.target_users?.map((user, i) => (
                     <Badge key={i} variant="secondary" className="text-base px-4 py-2">
                       {user}
                     </Badge>
-                  ))}
+                  )) || <p className="text-muted-foreground">No target users defined</p>}
                 </div>
               </CardContent>
             </Card>
@@ -147,11 +147,11 @@ export default function DemoPage({ params }: { params: Promise<{ id: string }> }
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-3">
-                  {project.idea.tech_stack_suggestions.map((tech, i) => (
+                  {project.idea.tech_stack_suggestions?.map((tech, i) => (
                     <Badge key={i} variant="outline" className="text-base px-4 py-2">
                       {tech}
                     </Badge>
-                  ))}
+                  )) || <p className="text-muted-foreground">No tech stack suggestions</p>}
                 </div>
               </CardContent>
             </Card>
@@ -166,12 +166,12 @@ export default function DemoPage({ params }: { params: Promise<{ id: string }> }
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3">
-                  {project.idea.features.map((feature, i) => (
+                  {project.idea.features?.map((feature, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                       <span className="text-base">{feature}</span>
                     </li>
-                  ))}
+                  )) || <p className="text-muted-foreground">No features defined</p>}
                 </ul>
               </CardContent>
             </Card>
@@ -186,12 +186,12 @@ export default function DemoPage({ params }: { params: Promise<{ id: string }> }
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3">
-                  {project.idea.risks.map((risk, i) => (
+                  {project.idea.risks?.map((risk, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
                       <span className="text-base">{risk}</span>
                     </li>
-                  ))}
+                  )) || <p className="text-muted-foreground">No risks identified</p>}
                 </ul>
               </CardContent>
             </Card>

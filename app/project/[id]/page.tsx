@@ -4,6 +4,19 @@ import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+} from "@dnd-kit/core"
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
+import { useSortable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import {
   getProject,
   updateProjectIdea,
   addTask,
@@ -68,8 +81,13 @@ export default function ProjectPage() {
   const [members, setMembers] = useState<ProjectMember[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [members, setMembers] = useState<ProjectMember[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Drag and drop state
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const sensors = useSensors(useSensor(PointerSensor))
 
   const [ideaInput, setIdeaInput] = useState("")
   const [isAnalyzingIdea, setIsAnalyzingIdea] = useState(false)
@@ -77,6 +95,8 @@ export default function ProjectPage() {
 
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskDescription, setNewTaskDescription] = useState("")
+  const [newTaskEffort, setNewTaskEffort] = useState<"Low" | "Medium" | "High">("Medium")
+  const [newTaskAssignee, setNewTaskAssignee] = useState<string | null>(null)
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false)
 
@@ -135,6 +155,16 @@ export default function ProjectPage() {
 
         setProject(projectData)
         setLoading(false)
+
+        // Load project members
+        if (projectData.members && projectData.members.length > 0) {
+          try {
+            const projectMembers = await getProjectMembers(projectData.members)
+            if (mounted) setMembers(projectMembers)
+          } catch (err) {
+            console.error("Failed to load members:", err)
+          }
+        }
 
         // Set up subscriptions after initial load
         setTimeout(() => {
@@ -217,7 +247,19 @@ export default function ProjectPage() {
         }),
       )
 
-      const analysis: IdeaAnalysis = JSON.parse(data.result)
+      let analysis: IdeaAnalysis
+      try {
+        analysis = JSON.parse(data.result)
+      } catch (parseError) {
+        console.error("JSON parsing failed:", data.result)
+        throw new Error("AI returned invalid response format. Please try again.")
+      }
+      
+      // Validate required fields
+      if (!analysis.problem_statement || !Array.isArray(analysis.target_users)) {
+        throw new Error("Incomplete analysis received. Please try again.")
+      }
+      
       await updateProjectIdea(projectId, analysis)
       setProject((prev) => (prev ? { ...prev, idea: analysis } : prev))
 
@@ -250,7 +292,7 @@ export default function ProjectPage() {
           body: JSON.stringify({
             action: "generate_tasks",
             data: {
-              features: project.idea.features,
+              features: project.idea.features || [],
               projectName: project.name,
               duration: project.duration,
             },
@@ -258,21 +300,48 @@ export default function ProjectPage() {
         }),
       )
 
-      const generatedTasks = JSON.parse(data.result)
-      for (const task of generatedTasks) {
-        await addTask({
-          project_id: projectId,
-          title: task.title,
-          description: task.description || "",
-          status: "todo",
-          effort: task.effort || "Medium",
-        })
+      let generatedTasks
+      try {
+        generatedTasks = JSON.parse(data.result)
+      } catch (parseError) {
+        console.error("JSON parsing failed:", data.result)
+        throw new Error("AI returned invalid response format. Please try again.")
+      }
+      
+      // Validate the response structure
+      if (!Array.isArray(generatedTasks)) {
+        throw new Error("Invalid response format from AI")
       }
 
-      toast({
-        title: "Tasks generated!",
-        description: `${generatedTasks.length} tasks added to your board.`,
-      })
+      if (generatedTasks.length === 0) {
+        throw new Error("No tasks were generated")
+      }
+
+      let successCount = 0
+      for (const task of generatedTasks) {
+        try {
+          await addTask({
+            project_id: projectId,
+            title: task.title || "Untitled Task",
+            description: task.description || "",
+            status: "ToDo",
+            effort: task.effort || "Medium",
+            assigned_to: null,
+          })
+          successCount++
+        } catch (taskError) {
+          console.error("Failed to add task:", task.title, taskError)
+        }
+      }
+
+      if (successCount > 0) {
+        toast({
+          title: "Tasks generated!",
+          description: `${successCount} tasks added to your board.`,
+        })
+      } else {
+        throw new Error("Failed to add any tasks to the board")
+      }
     } catch (error: any) {
       toast({
         title: "Task generation failed",
@@ -293,8 +362,9 @@ export default function ProjectPage() {
         project_id: projectId,
         title: newTaskTitle,
         description: newTaskDescription,
-        status: "todo",
-        effort: "Medium",
+        status: "ToDo",
+        effort: newTaskEffort,
+        assigned_to: newTaskAssignee,
       })
 
       if (newTask) {
@@ -303,6 +373,8 @@ export default function ProjectPage() {
 
       setNewTaskTitle("")
       setNewTaskDescription("")
+      setNewTaskEffort("Medium")
+      setNewTaskAssignee(null)
       setAddTaskDialogOpen(false)
       toast({ title: "Task added!" })
     } catch (error: any) {
@@ -323,6 +395,55 @@ export default function ProjectPage() {
     } catch (error) {
       // Revert on error
       setTasks((prev) => prev.map((t) => (t.task_id === taskId ? { ...t, status: t.status } : t)))
+    }
+  }
+
+  const handleAssignTask = async (taskId: string, assignedTo: string | null) => {
+    setTasks((prev) => prev.map((t) => (t.task_id === taskId ? { ...t, assigned_to: assignedTo } : t)))
+    try {
+      await updateTask(taskId, { assigned_to: assignedTo })
+      toast({ title: assignedTo ? "Task assigned!" : "Task unassigned!" })
+    } catch (error) {
+      // Revert on error
+      const originalTask = tasks.find((t) => t.task_id === taskId)
+      if (originalTask) {
+        setTasks((prev) => prev.map((t) => (t.task_id === taskId ? { ...t, assigned_to: originalTask.assigned_to } : t)))
+      }
+      toast({
+        title: "Failed to update assignment",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Drag and drop handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    const task = tasks.find((t) => t.task_id === active.id)
+    setActiveTask(task || null)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveTask(null)
+
+    if (!over) return
+
+    const taskId = active.id as string
+    const newStatus = over.id as Task["status"]
+
+    // Map droppable IDs to status values
+    const statusMap: Record<string, Task["status"]> = {
+      "todo-column": "ToDo",
+      "inprogress-column": "InProgress", 
+      "done-column": "Done"
+    }
+
+    const mappedStatus = statusMap[newStatus] || newStatus
+
+    const task = tasks.find((t) => t.task_id === taskId)
+    if (task && task.status !== mappedStatus) {
+      handleUpdateTaskStatus(taskId, mappedStatus)
     }
   }
 
@@ -365,7 +486,7 @@ export default function ProjectPage() {
       })
 
       const context = project?.idea
-        ? `Project: ${project.name}\nProblem: ${project.idea.problem_statement}\nFeatures: ${project.idea.features.join(", ")}`
+        ? `Project: ${project.name}\nProblem: ${project.idea.problem_statement || "Not defined"}\nFeatures: ${(project.idea.features || []).join(", ")}`
         : `Project: ${project?.name || "Hackathon Project"}`
 
       const data = await callApiWithRetry("chat", () =>
@@ -453,9 +574,9 @@ export default function ProjectPage() {
 
   if (!project) return null
 
-  const todoTasks = tasks.filter((t) => t.status === "todo")
-  const inProgressTasks = tasks.filter((t) => t.status === "in_progress")
-  const doneTasks = tasks.filter((t) => t.status === "done")
+  const todoTasks = tasks.filter((t) => t.status === "ToDo")
+  const inProgressTasks = tasks.filter((t) => t.status === "InProgress")
+  const doneTasks = tasks.filter((t) => t.status === "Done")
 
   return (
     <div className="min-h-screen bg-background">
@@ -575,11 +696,11 @@ export default function ProjectPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
-                      {project.idea.target_users.map((user, i) => (
+                      {project.idea.target_users?.map((user, i) => (
                         <Badge key={i} variant="secondary">
                           {user}
                         </Badge>
-                      ))}
+                      )) || <p className="text-muted-foreground">No target users defined</p>}
                     </div>
                   </CardContent>
                 </Card>
@@ -588,35 +709,37 @@ export default function ProjectPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       Features
-                      <Button
-                        size="sm"
-                        onClick={handleGenerateTasks}
-                        disabled={isGeneratingTasks || retryState.isRetrying}
-                      >
-                        {isGeneratingTasks ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : retryState.isRetrying ? (
-                          <>
-                            <Clock className="mr-1 h-4 w-4" />
-                            {retryState.retryAfter}s
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="mr-1 h-4 w-4" />
-                            Generate Tasks
-                          </>
-                        )}
-                      </Button>
+                      {project.idea.features && project.idea.features.length > 0 && (
+                        <Button
+                          size="sm"
+                          onClick={handleGenerateTasks}
+                          disabled={isGeneratingTasks || retryState.isRetrying}
+                        >
+                          {isGeneratingTasks ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : retryState.isRetrying ? (
+                            <>
+                              <Clock className="mr-1 h-4 w-4" />
+                              {retryState.retryAfter}s
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="mr-1 h-4 w-4" />
+                              Generate Tasks
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2">
-                      {project.idea.features.map((feature, i) => (
+                      {project.idea.features?.map((feature, i) => (
                         <li key={i} className="flex items-start gap-2">
                           <CheckSquare className="h-4 w-4 mt-0.5 text-primary shrink-0" />
                           <span className="text-sm">{feature}</span>
                         </li>
-                      ))}
+                      )) || <p className="text-muted-foreground">No features defined</p>}
                     </ul>
                   </CardContent>
                 </Card>
@@ -630,11 +753,11 @@ export default function ProjectPage() {
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2">
-                      {project.idea.risks.map((risk, i) => (
+                      {project.idea.risks?.map((risk, i) => (
                         <li key={i} className="text-sm text-muted-foreground">
                           • {risk}
                         </li>
-                      ))}
+                      )) || <p className="text-muted-foreground">No risks identified</p>}
                     </ul>
                   </CardContent>
                 </Card>
@@ -645,9 +768,9 @@ export default function ProjectPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
-                      {project.idea.tech_stack_suggestions.map((tech, i) => (
+                      {project.idea.tech_stack_suggestions?.map((tech, i) => (
                         <Badge key={i}>{tech}</Badge>
-                      ))}
+                      )) || <p className="text-muted-foreground">No tech stack suggestions</p>}
                     </div>
                   </CardContent>
                 </Card>
@@ -683,6 +806,63 @@ export default function ProjectPage() {
                       onChange={(e) => setNewTaskDescription(e.target.value)}
                       rows={3}
                     />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Effort Level</Label>
+                        <Select value={newTaskEffort} onValueChange={(value) => setNewTaskEffort(value as "Low" | "Medium" | "High")}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Low">Low</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="High">High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Assign to</Label>
+                        <Select value={newTaskAssignee || "unassigned"} onValueChange={(value) => setNewTaskAssignee(value === "unassigned" ? null : value)}>
+                          <SelectTrigger>
+                            <SelectValue>
+                              {newTaskAssignee ? (
+                                (() => {
+                                  const member = members.find(m => m.user_id === newTaskAssignee)
+                                  return member ? (
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                                        {member.name.charAt(0).toUpperCase()}
+                                      </div>
+                                      <span>{member.name}</span>
+                                    </div>
+                                  ) : "Unassigned"
+                                })()
+                              ) : (
+                                "Unassigned"
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unassigned">
+                              <span className="text-muted-foreground">Unassigned</span>
+                            </SelectItem>
+                            {members.map((member) => (
+                              <SelectItem key={member.user_id} value={member.user_id}>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                                    {member.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span>{member.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
                     <Button onClick={handleAddTask} disabled={!newTaskTitle.trim() || isAddingTask} className="w-full">
                       {isAddingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Task"}
                     </Button>
@@ -691,76 +871,95 @@ export default function ProjectPage() {
               </Dialog>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              {/* Todo Column */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-slate-400" />
-                    To Do ({todoTasks.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {todoTasks.map((task) => (
-                    <TaskCard
-                      key={task.task_id}
-                      task={task}
-                      onStatusChange={handleUpdateTaskStatus}
-                      onDelete={handleDeleteTask}
-                    />
-                  ))}
-                  {todoTasks.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No tasks yet</p>
-                  )}
-                </CardContent>
-              </Card>
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* Todo Column */}
+                <DroppableColumn
+                  id="todo-column"
+                  title="To Do"
+                  count={todoTasks.length}
+                  color="bg-slate-400"
+                >
+                  <SortableContext items={todoTasks.map(t => t.task_id)} strategy={verticalListSortingStrategy}>
+                    {todoTasks.map((task) => (
+                      <TaskCard
+                        key={task.task_id}
+                        task={task}
+                        onStatusChange={handleUpdateTaskStatus}
+                        onDelete={handleDeleteTask}
+                        onAssign={handleAssignTask}
+                        members={members}
+                      />
+                    ))}
+                    {todoTasks.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No tasks yet</p>
+                    )}
+                  </SortableContext>
+                </DroppableColumn>
 
-              {/* In Progress Column */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-blue-500" />
-                    In Progress ({inProgressTasks.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {inProgressTasks.map((task) => (
-                    <TaskCard
-                      key={task.task_id}
-                      task={task}
-                      onStatusChange={handleUpdateTaskStatus}
-                      onDelete={handleDeleteTask}
-                    />
-                  ))}
-                  {inProgressTasks.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No tasks in progress</p>
-                  )}
-                </CardContent>
-              </Card>
+                {/* In Progress Column */}
+                <DroppableColumn
+                  id="inprogress-column"
+                  title="In Progress"
+                  count={inProgressTasks.length}
+                  color="bg-blue-500"
+                >
+                  <SortableContext items={inProgressTasks.map(t => t.task_id)} strategy={verticalListSortingStrategy}>
+                    {inProgressTasks.map((task) => (
+                      <TaskCard
+                        key={task.task_id}
+                        task={task}
+                        onStatusChange={handleUpdateTaskStatus}
+                        onDelete={handleDeleteTask}
+                        onAssign={handleAssignTask}
+                        members={members}
+                      />
+                    ))}
+                    {inProgressTasks.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No tasks in progress</p>
+                    )}
+                  </SortableContext>
+                </DroppableColumn>
 
-              {/* Done Column */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-green-500" />
-                    Done ({doneTasks.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {doneTasks.map((task) => (
-                    <TaskCard
-                      key={task.task_id}
-                      task={task}
-                      onStatusChange={handleUpdateTaskStatus}
-                      onDelete={handleDeleteTask}
-                    />
-                  ))}
-                  {doneTasks.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No completed tasks</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                {/* Done Column */}
+                <DroppableColumn
+                  id="done-column"
+                  title="Done"
+                  count={doneTasks.length}
+                  color="bg-green-500"
+                >
+                  <SortableContext items={doneTasks.map(t => t.task_id)} strategy={verticalListSortingStrategy}>
+                    {doneTasks.map((task) => (
+                      <TaskCard
+                        key={task.task_id}
+                        task={task}
+                        onStatusChange={handleUpdateTaskStatus}
+                        onDelete={handleDeleteTask}
+                        onAssign={handleAssignTask}
+                        members={members}
+                      />
+                    ))}
+                    {doneTasks.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No completed tasks</p>
+                    )}
+                  </SortableContext>
+                </DroppableColumn>
+              </div>
+
+              {/* Drag Overlay */}
+              <DragOverlay>
+                {activeTask ? (
+                  <div className="p-3 bg-background border rounded-lg space-y-2 shadow-lg opacity-90">
+                    <p className="text-sm font-medium">{activeTask.title}</p>
+                    {activeTask.description && <p className="text-xs text-muted-foreground">{activeTask.description}</p>}
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           </TabsContent>
 
           {/* Mentor Tab */}
@@ -840,6 +1039,44 @@ export default function ProjectPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {members.length > 0 ? (
+                    members.map((member) => {
+                      const assignedTasks = tasks.filter(t => t.assigned_to === member.user_id)
+                      const completedTasks = assignedTasks.filter(t => t.status === "Done")
+                      
+                      return (
+                        <div key={member.user_id} className="flex items-center gap-3 p-3 rounded-lg border">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                            {member.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">{member.name}</p>
+                            <p className="text-sm text-muted-foreground">{member.email}</p>
+                            <div className="flex items-center gap-4 mt-1">
+                              <span className="text-xs text-muted-foreground">
+                                {assignedTasks.length} tasks assigned
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {completedTasks.length} completed
+                              </span>
+                              {member.online_status && (
+                                <div className="flex items-center gap-1">
+                                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                                  <span className="text-xs text-green-600">Online</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {member.user_id === project.created_by && (
+                            <Badge className="ml-auto">Owner</Badge>
+                          )}
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div className="text-center py-8">
+                      <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Loading team members...</p>
                   {members.map((member) => (
                     <div key={member.user_id} className="flex items-center gap-3 p-3 rounded-lg border">
                       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -851,7 +1088,7 @@ export default function ProjectPage() {
                       </div>
                       {member.user_id === project.created_by && <Badge className="ml-auto">Owner</Badge>}
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -886,42 +1123,164 @@ export default function ProjectPage() {
   )
 }
 
+function DroppableColumn({
+  id,
+  title,
+  count,
+  color,
+  children,
+}: {
+  id: string
+  title: string
+  count: number
+  color: string
+  children: React.ReactNode
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id })
+
+  return (
+    <Card className={`${isOver ? "ring-2 ring-primary" : ""} transition-all`}>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <div className={`h-2 w-2 rounded-full ${color}`} />
+          {title} ({count})
+        </CardTitle>
+      </CardHeader>
+      <CardContent ref={setNodeRef} className="space-y-2 min-h-[200px]">
+        {children}
+      </CardContent>
+    </Card>
+  )
+}
+
 function TaskCard({
   task,
   onStatusChange,
   onDelete,
+  onAssign,
+  members,
 }: {
   task: Task
   onStatusChange: (id: string, status: Task["status"]) => void
   onDelete: (id: string) => void
+  onAssign: (id: string, assignedTo: string | null) => void
+  members: ProjectMember[]
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.task_id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
   const effortColors = {
     Low: "bg-green-500/10 text-green-600",
     Medium: "bg-amber-500/10 text-amber-600",
     High: "bg-red-500/10 text-red-600",
   }
 
+  const assignedMember = members.find(m => m.user_id === task.assigned_to)
+
   return (
-    <div className="p-3 bg-background border rounded-lg space-y-2">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`p-3 bg-background border rounded-lg space-y-2 cursor-grab active:cursor-grabbing ${
+        isDragging ? "opacity-50 shadow-lg" : "hover:shadow-md"
+      } transition-shadow`}
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium">{task.title}</p>
-        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => onDelete(task.task_id)}>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-6 w-6 shrink-0" 
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(task.task_id)
+          }}
+        >
           <Trash2 className="h-3 w-3" />
         </Button>
       </div>
+      
       {task.description && <p className="text-xs text-muted-foreground">{task.description}</p>}
+      
       <div className="flex items-center justify-between gap-2">
         <Badge variant="secondary" className={effortColors[task.effort as keyof typeof effortColors] || ""}>
           {task.effort}
         </Badge>
-        <Select value={task.status} onValueChange={(value) => onStatusChange(task.task_id, value as Task["status"])}>
-          <SelectTrigger className="h-7 w-28 text-xs">
+        
+        <Select 
+          value={task.status} 
+          onValueChange={(value) => {
+            onStatusChange(task.task_id, value as Task["status"])
+          }}
+        >
+          <SelectTrigger 
+            className="h-7 w-28 text-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todo">To Do</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="done">Done</SelectItem>
+            <SelectItem value="ToDo">To Do</SelectItem>
+            <SelectItem value="InProgress">In Progress</SelectItem>
+            <SelectItem value="Done">Done</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Member Assignment */}
+      <div className="flex items-center justify-between gap-2 pt-1 border-t">
+        <span className="text-xs text-muted-foreground">Assigned to:</span>
+        <Select 
+          value={task.assigned_to || "unassigned"} 
+          onValueChange={(value) => {
+            const assignedTo = value === "unassigned" ? null : value
+            onAssign(task.task_id, assignedTo)
+          }}
+        >
+          <SelectTrigger 
+            className="h-7 w-32 text-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <SelectValue>
+              {assignedMember ? (
+                <div className="flex items-center gap-1">
+                  <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                    {assignedMember.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="truncate">{assignedMember.name}</span>
+                </div>
+              ) : (
+                "Unassigned"
+              )}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="unassigned">
+              <span className="text-muted-foreground">Unassigned</span>
+            </SelectItem>
+            {members.map((member) => (
+              <SelectItem key={member.user_id} value={member.user_id}>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                    {member.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span>{member.name}</span>
+                </div>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

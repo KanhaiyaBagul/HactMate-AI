@@ -1,3 +1,5 @@
+[![HackMate AI LIVE](https://img.shields.io/badge/HackMate%20AI-LIVE-success?style=for-the-badge)](https://hackmate-ai.vercel.app/)
+
 # 🚀 HackMate AI
 
 **HackMate AI** is an AI-powered hackathon collaboration platform that helps teams transform raw ideas into structured execution plans within limited time.
@@ -50,6 +52,6 @@ It acts as a **virtual mentor** by analyzing ideas, generating tasks, and guidin
 - **hooks/** → Custom React hooks
 - **public/** → Static assets
 
-hackmate-n8xbvg93g-lokis-projects-08584ceb.vercel.app
+
 
 
