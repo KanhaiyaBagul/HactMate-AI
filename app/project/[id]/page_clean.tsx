@@ -87,13 +87,7 @@ export default function ProjectPage() {
 
   // Drag and drop state
   const [activeTask, setActiveTask] = useState<Task | null>(null)
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 1, // Ultra-fast activation - just 1px movement
-      },
-    })
-  )
+  const sensors = useSensors(useSensor(PointerSensor))
 
   // UI state
   const [ideaInput, setIdeaInput] = useState("")
@@ -475,10 +469,6 @@ export default function ProjectPage() {
     const task = tasks.find((t) => t.task_id === taskId)
     if (task && task.status !== mappedStatus) {
       handleUpdateTaskStatus(taskId, mappedStatus)
-      toast({
-        title: "Task moved!",
-        description: `Task moved to ${mappedStatus === "ToDo" ? "To Do" : mappedStatus === "InProgress" ? "In Progress" : "Done"}`,
-      })
     }
   }
 
@@ -978,17 +968,9 @@ export default function ProjectPage() {
               {/* Drag Overlay */}
               <DragOverlay>
                 {activeTask ? (
-                  <div className="p-3 bg-background border-2 border-primary/50 rounded-lg space-y-2 shadow-2xl opacity-95 scale-105 rotate-2 ring-2 ring-primary/30">
+                  <div className="p-3 bg-background border rounded-lg space-y-2 shadow-lg opacity-90">
                     <p className="text-sm font-medium">{activeTask.title}</p>
                     {activeTask.description && <p className="text-xs text-muted-foreground">{activeTask.description}</p>}
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {activeTask.effort}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {activeTask.status === "ToDo" ? "To Do" : activeTask.status === "InProgress" ? "In Progress" : "Done"}
-                      </Badge>
-                    </div>
                   </div>
                 ) : null}
               </DragOverlay>
@@ -1162,28 +1144,15 @@ function DroppableColumn({
   const { setNodeRef, isOver } = useDroppable({ id })
 
   return (
-    <Card className={`${isOver ? "ring-2 ring-primary bg-primary/10 scale-[1.02]" : ""} transition-all duration-100 ease-out`}>
+    <Card className={`${isOver ? "ring-2 ring-primary" : ""} transition-all`}>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <div className={`h-2 w-2 rounded-full ${color} transition-all duration-100 ${isOver ? "scale-125" : ""}`} />
+          <div className={`h-2 w-2 rounded-full ${color}`} />
           {title} ({count})
-          {isOver && (
-            <div className="ml-auto text-primary animate-pulse">
-              <span className="text-xs font-medium">Drop here</span>
-            </div>
-          )}
         </CardTitle>
       </CardHeader>
-      <CardContent 
-        ref={setNodeRef} 
-        className={`space-y-2 min-h-[200px] ${isOver ? "bg-primary/10" : ""} transition-all duration-100 ease-out rounded-md`}
-      >
+      <CardContent ref={setNodeRef} className="space-y-2 min-h-[200px]">
         {children}
-        {isOver && (
-          <div className="border-2 border-dashed border-primary/60 rounded-lg p-3 text-center text-primary animate-pulse">
-            <span className="text-sm font-medium">Drop task here</span>
-          </div>
-        )}
       </CardContent>
     </Card>
   )
@@ -1209,17 +1178,11 @@ function TaskCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ 
-    id: task.task_id,
-    transition: {
-      duration: 100, // Ultra-fast transition
-      easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)', // Bouncy smooth easing
-    }
-  })
+  } = useSortable({ id: task.task_id })
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition, // No transition while dragging for maximum smoothness
+    transition,
   }
 
   const effortColors = {
@@ -1236,19 +1199,18 @@ function TaskCard({
       style={style}
       {...attributes}
       {...listeners}
-      className={`p-3 bg-background border rounded-lg space-y-2 cursor-grab active:cursor-grabbing select-none ${
-        isDragging ? "opacity-70 shadow-2xl scale-110 z-50 rotate-3 ring-2 ring-primary/50" : "hover:shadow-lg hover:scale-[1.02]"
-      } transition-all duration-100 ease-out will-change-transform`}
+      className={`p-3 bg-background border rounded-lg space-y-2 cursor-grab active:cursor-grabbing ${
+        isDragging ? "opacity-50 shadow-lg" : "hover:shadow-md"
+      } transition-shadow`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium flex-1 pointer-events-none">{task.title}</p>
+        <p className="text-sm font-medium">{task.title}</p>
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-6 w-6 shrink-0 pointer-events-auto opacity-60 hover:opacity-100 transition-opacity duration-100" 
+          className="h-6 w-6 shrink-0" 
           onClick={(e) => {
             e.stopPropagation()
-            e.preventDefault()
             onDelete(task.task_id)
           }}
         >
@@ -1256,12 +1218,10 @@ function TaskCard({
         </Button>
       </div>
       
-      {task.description && (
-        <p className="text-xs text-muted-foreground pointer-events-none">{task.description}</p>
-      )}
+      {task.description && <p className="text-xs text-muted-foreground">{task.description}</p>}
       
       <div className="flex items-center justify-between gap-2">
-        <Badge variant="secondary" className={`${effortColors[task.effort as keyof typeof effortColors] || ""} pointer-events-none transition-all duration-100`}>
+        <Badge variant="secondary" className={effortColors[task.effort as keyof typeof effortColors] || ""}>
           {task.effort}
         </Badge>
         
@@ -1272,11 +1232,8 @@ function TaskCard({
           }}
         >
           <SelectTrigger 
-            className="h-7 w-28 text-xs pointer-events-auto transition-all duration-100 hover:bg-accent"
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-            }}
+            className="h-7 w-28 text-xs"
+            onClick={(e) => e.stopPropagation()}
           >
             <SelectValue />
           </SelectTrigger>
@@ -1290,7 +1247,7 @@ function TaskCard({
 
       {/* Member Assignment */}
       <div className="flex items-center justify-between gap-2 pt-1 border-t">
-        <span className="text-xs text-muted-foreground pointer-events-none">Assigned to:</span>
+        <span className="text-xs text-muted-foreground">Assigned to:</span>
         <Select 
           value={task.assigned_to || "unassigned"} 
           onValueChange={(value) => {
@@ -1299,11 +1256,8 @@ function TaskCard({
           }}
         >
           <SelectTrigger 
-            className="h-7 w-32 text-xs pointer-events-auto transition-all duration-100 hover:bg-accent"
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-            }}
+            className="h-7 w-32 text-xs"
+            onClick={(e) => e.stopPropagation()}
           >
             <SelectValue>
               {assignedMember ? (
