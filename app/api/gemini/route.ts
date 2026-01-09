@@ -424,9 +424,27 @@ IMPORTANT RULES:
 System Architecture Diagram Format (Example):
 \`\`\`mermaid
 flowchart LR
-User --> Frontend
-Frontend --> Backend
-Backend --> Database
+    User["User"] --> Frontend["Frontend Application"]
+    Frontend --> Backend["Backend API"]
+    Backend --> Database["Database"]
+\`\`\`
+
+Use Case Diagram Format (Example):
+\`\`\`mermaid
+sequenceDiagram
+    participant U as User
+    participant S as System
+    U->>S: Login Request
+    S-->>U: Dashboard Response
+\`\`\`
+
+CRITICAL MERMAID RULES:
+- **Nodes**: Use \`id["Label Text"]\` syntax. Never use spaces in IDs (e.g., \`User Registration\` -> \`UserReg["User Registration"]\`).
+- **Sequence Diagrams**: Use \`participant Alias as Dislay Name\`. Do NOT use brackets \`[]\` for participants.
+- **Flowcharts**: Always quote labels: \`A["Label"]\`.
+- do NOT mix syntax (e.g. no arrows \`-->\` in sequence diagrams).
+- do NOT use unsupported styling or color functions.
+- Return ONLY valid Mermaid code blocks.
 \`\`\`
 `
 
