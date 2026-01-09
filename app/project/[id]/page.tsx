@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { GithubHistory } from "@/components/github-history"
 import {
   ArrowLeft,
   Lightbulb,
@@ -1350,7 +1351,7 @@ export default function ProjectPage() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="idea" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 max-w-3xl">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 max-w-4xl h-auto">
             <TabsTrigger value="idea" className="flex items-center gap-2">
               <Lightbulb className="h-4 w-4" />
               <span className="hidden sm:inline">Idea</span>
@@ -2102,6 +2103,18 @@ export default function ProjectPage() {
           {/* Team Tab */}
           <TabsContent value="team" className="space-y-6">
             <div className="grid gap-6 lg:grid-cols-3">
+              {/* GitHub History */}
+              <div className="lg:col-span-3 space-y-4 border-2 border-dashed border-amber-500 p-4 rounded-xl bg-amber-50/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 px-1">
+                    <Github className="h-5 w-5 text-primary" />
+                    <h2 className="text-xl font-bold">GitHub Integration</h2>
+                  </div>
+                  <Badge variant="outline" className="bg-amber-100 text-amber-800">New Feature</Badge>
+                </div>
+                <GithubHistory repoUrl={project.github_repo} />
+              </div>
+
               {/* Team Members */}
               <Card className="lg:col-span-2">
                 <CardHeader>
