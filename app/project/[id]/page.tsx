@@ -61,6 +61,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { GithubHistory } from "@/components/github-history"
+import { ProjectHealth } from "@/components/project-health"
+import { calculateProjectHealth } from "@/lib/health-utils"
 import {
   ArrowLeft,
   Lightbulb,
@@ -199,8 +201,14 @@ export default function ProjectPage() {
   const retryTimerRef = useRef<NodeJS.Timeout | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Calculate time remaining
-  const [currentTime, setCurrentTime] = useState(new Date())
+  // Commit count state for health score
+  const [commitsCount, setCommitsCount] = useState(0)
+
+  // Hydration fix: track if component has mounted on client
+  const [hasMounted, setHasMounted] = useState(false)
+
+  // Calculate time remaining - use Date.now() on server to get a number we can safely use
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
 
   const timeRemaining = useMemo(() => {
     if (!project) return "Loading..."
@@ -208,7 +216,7 @@ export default function ProjectPage() {
     const start = new Date(project.created_at)
     const duration = project.duration === "24h" ? 24 : 48
     const end = new Date(start.getTime() + duration * 60 * 60 * 1000)
-    const remaining = end.getTime() - currentTime.getTime()
+    const remaining = end.getTime() - currentTime
 
     if (remaining <= 0) return "Time's up! ⏰"
 
@@ -218,13 +226,20 @@ export default function ProjectPage() {
     return `${hours}h ${minutes}m remaining`
   }, [project?.created_at, project?.duration, currentTime])
 
+  // Set hasMounted on client and initialize currentTime
+  useEffect(() => {
+    setHasMounted(true)
+    setCurrentTime(Date.now())
+  }, [])
+
   // Update timer every minute
   useEffect(() => {
+    if (!hasMounted) return
     const interval = setInterval(() => {
-      setCurrentTime(new Date())
+      setCurrentTime(Date.now())
     }, 60000)
     return () => clearInterval(interval)
-  }, [])
+  }, [hasMounted])
 
   // Retry timer effect
   useEffect(() => {
@@ -327,6 +342,25 @@ export default function ProjectPage() {
       mounted = false
     }
   }, [projectId, user, authLoading, router])
+
+  // Fetch commit count for health score
+  useEffect(() => {
+    if (!project?.github_repo) return
+
+    const fetchCommitCount = async () => {
+      try {
+        const response = await fetch(`/api/github/commits?url=${encodeURIComponent(project.github_repo)}`)
+        const data = await response.json()
+        if (response.ok && data.commits) {
+          setCommitsCount(data.commits.length)
+        }
+      } catch (err) {
+        console.error("Failed to fetch commit count for health:", err)
+      }
+    }
+
+    fetchCommitCount()
+  }, [project?.github_repo])
 
   // API retry helper
   const callApiWithRetry = async (action: string, apiCall: () => Promise<Response>) => {
@@ -1513,6 +1547,17 @@ export default function ProjectPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Project Health Score in Idea Tab too for visibility */}
+                <div className="md:col-span-2">
+                  <ProjectHealth
+                    project={project}
+                    tasks={tasks}
+                    members={members}
+                    commitsCount={commitsCount}
+                    now={currentTime}
+                  />
+                </div>
               </div>
             )}
           </TabsContent>
@@ -1860,6 +1905,16 @@ export default function ProjectPage() {
 
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
+            <div className="md:max-w-md mx-auto">
+              <ProjectHealth
+                project={project}
+                tasks={tasks}
+                members={members}
+                commitsCount={commitsCount}
+                now={currentTime}
+              />
+            </div>
+
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               {/* Task Progress */}
               <Card>
