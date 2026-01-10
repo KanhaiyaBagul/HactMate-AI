@@ -240,10 +240,23 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
-          <Button variant="ghost" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-4">
+            {/* Logged in user email display */}
+            {user?.email && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg">
+                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-primary">
+                    {user.email.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <span className="text-sm text-muted-foreground">{user.email}</span>
+              </div>
+            )}
+            <Button variant="ghost" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 

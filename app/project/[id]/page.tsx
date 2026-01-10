@@ -1200,6 +1200,17 @@ export default function ProjectPage() {
                   <span className="text-amber-600">Rate limited. Retry in {retryState.retryAfter}s</span>
                 </div>
               )}
+              {/* Logged in user email display */}
+              {user?.email && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg">
+                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-xs font-semibold text-primary">
+                      {user.email.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">{user.email}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Switch
                   id="demo-mode"
