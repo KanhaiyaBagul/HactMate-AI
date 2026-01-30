@@ -138,10 +138,28 @@ export async function joinProjectByCode(joinCode: string, userId: string): Promi
   try {
     const db = getDb()
     const q = query(collection(db, "projects"), where("join_code", "==", joinCode))
-    const snapshot = await withTimeout(getDocs(q), 5000, { empty: true, docs: [] } as any)
-    if (snapshot.empty || !snapshot.docs?.length) return null
+
+    // STEP 1: READ - Find the project
+    console.log(`[Join] Searching for project with code: ${joinCode}`)
+    const snapshot = await getDocs(q)
+
+    if (snapshot.empty) {
+      console.log(`[Join] No project found with code: ${joinCode}`)
+      return null
+    }
 
     const projectDoc = snapshot.docs[0]
+    console.log(`[Join] Found project: ${projectDoc.id}`)
+
+    // Check if user is already a member
+    const projectData = projectDoc.data();
+    if (projectData.members?.includes(userId)) {
+      console.log(`[Join] User ${userId} is already a member`)
+      return projectDoc.id;
+    }
+
+    // STEP 2: WRITE - Update membership
+    console.log(`[Join] Attempting to add user ${userId} to project ${projectDoc.id}`)
     const batch = writeBatch(db)
 
     batch.update(doc(db, "projects", projectDoc.id), {
@@ -155,11 +173,12 @@ export async function joinProjectByCode(joinCode: string, userId: string): Promi
     })
 
     await batch.commit()
+    console.log(`[Join] Successfully joined project`)
 
     return projectDoc.id
   } catch (error) {
     console.error("Error joining project:", error)
-    throw error
+    throw error // Re-throw so UI can see the actual error
   }
 }
 
@@ -825,4 +844,85 @@ export async function removeMemberFromProject(projectId: string, userId: string)
   batch.delete(roleRef)
 
   await batch.commit()
+}
+
+// Whiteboard (tldraw)
+// We treat each shape/record as a document in a subcollection
+export function subscribeToWhiteboard(projectId: string, callback: (records: any[]) => void) {
+  try {
+    const db = getDb()
+    const q = query(collection(db, "projects", projectId, "whiteboard"))
+
+    return onSnapshot(q, (snapshot) => {
+      const records = snapshot.docs.map(doc => doc.data())
+      callback(records)
+    })
+  } catch {
+    callback([])
+    return () => { }
+  }
+}
+
+export async function updateWhiteboardShapes(projectId: string, updates: {
+  added?: Record<string, any>,
+  updated?: Record<string, any>,
+  removed?: Record<string, any>
+}): Promise<void> {
+  const db = getDb()
+  const batch = writeBatch(db)
+  const collectionRef = collection(db, "projects", projectId, "whiteboard")
+
+  // Handle Added
+  if (updates.added) {
+    Object.values(updates.added).forEach(record => {
+      const docRef = doc(collectionRef, record.id)
+      batch.set(docRef, record)
+    })
+  }
+
+  // Handle Updated
+  if (updates.updated) {
+    Object.values(updates.updated).forEach(record => {
+      const docRef = doc(collectionRef, record.id)
+      batch.update(docRef, record)
+    })
+  }
+
+  // Handle Removed
+  if (updates.removed) {
+    Object.values(updates.removed).forEach(record => {
+      const docRef = doc(collectionRef, record.id)
+      batch.delete(docRef)
+    })
+  }
+
+  await batch.commit()
+}
+
+// Presence
+export function subscribeToPresence(projectId: string, callback: (users: any[]) => void) {
+  try {
+    const db = getDb()
+    // Retrieve presence updated in last 60 seconds (simulated by client filtering usually, or just all for now)
+    const q = query(collection(db, "projects", projectId, "presence"))
+
+    return onSnapshot(q, (snapshot) => {
+      const users = snapshot.docs.map(doc => doc.data())
+      callback(users)
+    })
+  } catch (error) {
+    console.error("Error subscribing to presence:", error)
+    return () => { }
+  }
+}
+
+export async function updatePresence(projectId: string, userId: string, presence: any) {
+  try {
+    const db = getDb()
+    const docRef = doc(db, "projects", projectId, "presence", userId)
+    // Ensure lastActive is server timestamp for validity checks
+    await setDoc(docRef, { ...presence, lastActive: serverTimestamp() }, { merge: true })
+  } catch (error) {
+    // Silent fail for presence updates to avoid console spam
+  }
 }

@@ -63,7 +63,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { GithubHistory } from "@/components/github-history"
 import { ProjectHealth } from "@/components/project-health"
+import dynamic from "next/dynamic"
 import { calculateProjectHealth } from "@/lib/health-utils"
+
+const BrainstormBoard = dynamic(
+  () => import("@/components/brainstorm-board").then((mod) => mod.BrainstormBoard),
+  { ssr: false }
+)
 import {
   ArrowLeft,
   Lightbulb,
@@ -1405,8 +1411,8 @@ export default function ProjectPage() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="idea" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 max-w-4xl h-auto">
-            <TabsTrigger value="idea" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 max-w-5xl h-auto gap-1">
+            <TabsTrigger value="idea" className="flex items-center gap-2 cursor-pointer">
               <Lightbulb className="h-4 w-4" />
               <span className="hidden sm:inline">Idea</span>
             </TabsTrigger>
@@ -1425,6 +1431,10 @@ export default function ProjectPage() {
             <TabsTrigger value="mentor" className="flex items-center gap-2 cursor-pointer">
               <MessageCircle className="h-4 w-4" />
               <span className="hidden sm:inline">Mentor</span>
+            </TabsTrigger>
+            <TabsTrigger value="brainstorm" className="flex items-center gap-2 cursor-pointer">
+              <Lightbulb className="h-4 w-4" />
+              <span className="hidden sm:inline">Brainstorm</span>
             </TabsTrigger>
             <TabsTrigger value="team" className="flex items-center gap-2 cursor-pointer">
               <Share2 className="h-4 w-4" />
@@ -2143,6 +2153,31 @@ export default function ProjectPage() {
                 </div>
               </motion.div>
             </TabsContent>
+
+            {/* Brainstorm Tab */}
+            <TabsContent value="brainstorm" className="space-y-6 as-child">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Lightbulb className="h-5 w-5 text-yellow-500" />
+                      Collaborative Whiteboard
+                    </CardTitle>
+                    <CardDescription>
+                      Draw diagrams, plan architecture, and brainstorm together in real-time.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0 sm:p-6 pt-0 h-[650px]">
+                    <BrainstormBoard projectId={projectId} />
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </TabsContent>
+
             {/* Mentor Tab */}
             <TabsContent value="mentor" className="space-y-6 as-child">
               <motion.div

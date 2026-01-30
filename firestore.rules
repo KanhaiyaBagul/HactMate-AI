@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is a member of the project
+    function isMember(projectData) {
+      return request.auth.uid in projectData.members;
+    }
+
+    // --- USERS ---
+    // Allow anyone to read profiles (needed for Team View)
+    // Only owner can write
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Projects Collection
+    match /projects/{projectId} {
+      // Allow reading if:
+      // 1. User is a member
+      // 2. OR User is querying by join_code (for joining)
+      // 3. OR It's a Demo project (optional)
+      allow read: if isAuthenticated() && (
+        isMember(resource.data) || 
+        // Allow querying if looking for a specific join code
+        (request.query.limit <= 1 && resource.data.join_code != null) ||
+        resource.data.demo_mode == true
+      );
+      
+      // Allow create if authenticated
+      allow create: if isAuthenticated();
+      
+      // Allow update if member (can be refined to admin only)
+      allow update: if isAuthenticated() && isMember(resource.data);
+      
+      // Allow subcollections (tasks, messages, etc.)
+      match /tasks/{taskId} {
+        allow read, write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/projects/$(projectId)).data);
+      }
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/projects/$(projectId)).data);
+      }
+      match /whiteboard/{shapeId} {
+        allow read, write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/projects/$(projectId)).data);
+      }
+      match /presence/{userId} {
+        allow read, write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/projects/$(projectId)).data);
+      }
+    }
+
+    // Default catch-all (should be restricted in production)
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
