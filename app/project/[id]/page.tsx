@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -1409,166 +1410,551 @@ export default function ProjectPage() {
               <Lightbulb className="h-4 w-4" />
               <span className="hidden sm:inline">Idea</span>
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="flex items-center gap-2">
+            <TabsTrigger value="tasks" className="flex items-center gap-2 cursor-pointer">
               <CheckSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Tasks</span>
             </TabsTrigger>
-            <TabsTrigger value="schedule" className="flex items-center gap-2">
+            <TabsTrigger value="schedule" className="flex items-center gap-2 cursor-pointer">
               <CalendarDays className="h-4 w-4" />
               <span className="hidden sm:inline">Schedule</span>
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <TabsTrigger value="analytics" className="flex items-center gap-2 cursor-pointer">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="mentor" className="flex items-center gap-2">
+            <TabsTrigger value="mentor" className="flex items-center gap-2 cursor-pointer">
               <MessageCircle className="h-4 w-4" />
               <span className="hidden sm:inline">Mentor</span>
             </TabsTrigger>
-            <TabsTrigger value="team" className="flex items-center gap-2">
+            <TabsTrigger value="team" className="flex items-center gap-2 cursor-pointer">
               <Share2 className="h-4 w-4" />
               <span className="hidden sm:inline">Collaborate</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* Idea Tab */}
-          <TabsContent value="idea" className="space-y-6">
-            {!project.idea ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    Describe Your Idea
-                  </CardTitle>
-                  <CardDescription>Tell us about your hackathon project and our AI will analyze it</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Textarea
-                    placeholder="Describe your project idea in detail. What problem does it solve? Who is it for? What makes it unique?"
-                    value={ideaInput}
-                    onChange={(e) => setIdeaInput(e.target.value)}
-                    rows={6}
-                    className="resize-none"
-                  />
-                  <Button
-                    onClick={handleAnalyzeIdea}
-                    disabled={!ideaInput.trim() || isAnalyzingIdea || retryState.isRetrying}
-                    className="w-full"
-                  >
-                    {isAnalyzingIdea ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : retryState.isRetrying ? (
-                      <>
-                        <Clock className="mr-2 h-4 w-4" />
-                        Wait {retryState.retryAfter}s
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Analyze with AI
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Problem Statement</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">{project.idea.problem_statement}</p>
-                  </CardContent>
-                </Card>
+          <div className="relative min-h-[600px]">
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Target Users</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {project.idea.target_users?.map((user, i) => (
-                        <Badge key={i} variant="secondary">
-                          {user}
-                        </Badge>
-                      )) || <p className="text-muted-foreground">No target users defined</p>}
-                    </div>
-                  </CardContent>
-                </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      Features
-                      {project.idea.features && project.idea.features.length > 0 && (
-                        <Button
-                          size="sm"
-                          onClick={handleGenerateTasks}
-                          disabled={isGeneratingTasks || retryState.isRetrying}
-                        >
-                          {isGeneratingTasks ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : retryState.isRetrying ? (
-                            <>
-                              <Clock className="mr-1 h-4 w-4" />
-                              {retryState.retryAfter}s
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="mr-1 h-4 w-4" />
-                              Generate Tasks
-                            </>
+            {/* Idea Tab */}
+            <TabsContent value="idea" className="space-y-6 as-child">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {!project.idea ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        Describe Your Idea
+                      </CardTitle>
+                      <CardDescription>Tell us about your hackathon project and our AI will analyze it</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Textarea
+                        placeholder="Describe your project idea in detail. What problem does it solve? Who is it for? What makes it unique?"
+                        value={ideaInput}
+                        onChange={(e) => setIdeaInput(e.target.value)}
+                        rows={6}
+                        className="resize-none"
+                      />
+                      <Button
+                        onClick={handleAnalyzeIdea}
+                        disabled={!ideaInput.trim() || isAnalyzingIdea || retryState.isRetrying}
+                        className="w-full"
+                      >
+                        {isAnalyzingIdea ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : retryState.isRetrying ? (
+                          <>
+                            <Clock className="mr-2 h-4 w-4" />
+                            Wait {retryState.retryAfter}s
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Analyze with AI
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Problem Statement</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-muted-foreground">{project.idea.problem_statement}</p>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Target Users</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-2">
+                          {project.idea.target_users?.map((user, i) => (
+                            <Badge key={i} variant="secondary">
+                              {user}
+                            </Badge>
+                          )) || <p className="text-muted-foreground">No target users defined</p>}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          Features
+                          {project.idea.features && project.idea.features.length > 0 && (
+                            <Button
+                              size="sm"
+                              onClick={handleGenerateTasks}
+                              disabled={isGeneratingTasks || retryState.isRetrying}
+                              className="cursor-pointer"
+                            >
+                              {isGeneratingTasks ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : retryState.isRetrying ? (
+                                <>
+                                  <Clock className="mr-1 h-4 w-4" />
+                                  {retryState.retryAfter}s
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="mr-1 h-4 w-4" />
+                                  Generate Tasks
+                                </>
+                              )}
+                            </Button>
                           )}
-                        </Button>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {project.idea.features?.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-2">
-                          <CheckSquare className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                          <span className="text-sm">{feature}</span>
-                        </li>
-                      )) || <p className="text-muted-foreground">No features defined</p>}
-                    </ul>
-                  </CardContent>
-                </Card>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {project.idea.features?.map((feature, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <CheckSquare className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                              <span className="text-sm">{feature}</span>
+                            </li>
+                          )) || <p className="text-muted-foreground">No features defined</p>}
+                        </ul>
+                      </CardContent>
+                    </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-amber-500" />
-                      Risks
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {project.idea.risks?.map((risk, i) => (
-                        <li key={i} className="text-sm text-muted-foreground">
-                          • {risk}
-                        </li>
-                      )) || <p className="text-muted-foreground">No risks identified</p>}
-                    </ul>
-                  </CardContent>
-                </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-amber-500" />
+                          Risks
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {project.idea.risks?.map((risk, i) => (
+                            <li key={i} className="text-sm text-muted-foreground">
+                              • {risk}
+                            </li>
+                          )) || <p className="text-muted-foreground">No risks identified</p>}
+                        </ul>
+                      </CardContent>
+                    </Card>
 
-                <Card className="md:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Suggested Tech Stack</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {project.idea.tech_stack_suggestions?.map((tech, i) => (
-                        <Badge key={i}>{tech}</Badge>
-                      )) || <p className="text-muted-foreground">No tech stack suggestions</p>}
+                    <Card className="md:col-span-2">
+                      <CardHeader>
+                        <CardTitle>Suggested Tech Stack</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-2">
+                          {project.idea.tech_stack_suggestions?.map((tech, i) => (
+                            <Badge key={i}>{tech}</Badge>
+                          )) || <p className="text-muted-foreground">No tech stack suggestions</p>}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Project Health Score in Idea Tab too for visibility */}
+                    <div className="md:col-span-2">
+                      <ProjectHealth
+                        project={project}
+                        tasks={tasks}
+                        members={members}
+                        commitsCount={commitsCount}
+                        now={currentTime}
+                      />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                )}
+              </motion.div>
+            </TabsContent>
+            {/* Tasks Tab */}
+            <TabsContent value="tasks" className="space-y-6 as-child">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">Task Board</h2>
+                  <Dialog open={addTaskDialogOpen} onOpenChange={setAddTaskDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Task
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add New Task</DialogTitle>
+                        <DialogDescription>Create a new task for your project</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 pt-4">
+                        <Input
+                          placeholder="Task title"
+                          value={newTaskTitle}
+                          onChange={(e) => setNewTaskTitle(e.target.value)}
+                        />
+                        <Textarea
+                          placeholder="Task description (optional)"
+                          value={newTaskDescription}
+                          onChange={(e) => setNewTaskDescription(e.target.value)}
+                          rows={3}
+                        />
 
-                {/* Project Health Score in Idea Tab too for visibility */}
-                <div className="md:col-span-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Effort Level</Label>
+                            <Select value={newTaskEffort} onValueChange={(value) => setNewTaskEffort(value as "Low" | "Medium" | "High")}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Low">Low</SelectItem>
+                                <SelectItem value="Medium">Medium</SelectItem>
+                                <SelectItem value="High">High</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Priority</Label>
+                            <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as "Low" | "Medium" | "High" | "Critical")}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Low">Low</SelectItem>
+                                <SelectItem value="Medium">Medium</SelectItem>
+                                <SelectItem value="High">High</SelectItem>
+                                <SelectItem value="Critical">Critical</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Assign to</Label>
+                          <Select value={newTaskAssignee || "unassigned"} onValueChange={(value) => setNewTaskAssignee(value === "unassigned" ? null : value)}>
+                            <SelectTrigger>
+                              <SelectValue>
+                                {newTaskAssignee ? (
+                                  (() => {
+                                    const member = members.find(m => m.user_id === newTaskAssignee)
+                                    return member ? (
+                                      <div className="flex items-center gap-2">
+                                        <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                                          {member?.name ? member.name.charAt(0).toUpperCase() : "?"}
+                                        </div>
+                                        <span>{member.name}</span>
+                                      </div>
+                                    ) : "Unassigned"
+                                  })()
+                                ) : (
+                                  "Unassigned"
+                                )}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="unassigned">
+                                <span className="text-muted-foreground">Unassigned</span>
+                              </SelectItem>
+                              {members.map((member, i) => (
+                                <SelectItem key={`${member.user_id}-${i}`} value={member.user_id}>
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                                      {member?.name ? member.name.charAt(0).toUpperCase() : "?"}
+                                    </div>
+                                    <span>{member.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <Button onClick={handleAddTask} disabled={!newTaskTitle.trim() || isAddingTask} className="w-full">
+                          {isAddingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Task"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <DndContext
+                  sensors={sensors}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                >
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {/* Todo Column */}
+                    <DroppableColumn
+                      id="todo-column"
+                      title="To Do"
+                      count={todoTasks.length}
+                      color="bg-slate-400"
+                    >
+                      <SortableContext items={todoTasks.map(t => t.task_id)} strategy={verticalListSortingStrategy}>
+                        {todoTasks.map((task) => (
+                          <TaskCard
+                            key={task.task_id}
+                            task={task}
+                            onStatusChange={handleUpdateTaskStatus}
+                            onDelete={handleDeleteTask}
+                            onAssign={handleAssignTask}
+                            members={members}
+                          />
+                        ))}
+                        {todoTasks.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">No tasks yet</p>
+                        )}
+                      </SortableContext>
+                    </DroppableColumn>
+
+                    {/* In Progress Column */}
+                    <DroppableColumn
+                      id="inprogress-column"
+                      title="In Progress"
+                      count={inProgressTasks.length}
+                      color="bg-blue-500"
+                    >
+                      <SortableContext items={inProgressTasks.map(t => t.task_id)} strategy={verticalListSortingStrategy}>
+                        {inProgressTasks.map((task) => (
+                          <TaskCard
+                            key={task.task_id}
+                            task={task}
+                            onStatusChange={handleUpdateTaskStatus}
+                            onDelete={handleDeleteTask}
+                            onAssign={handleAssignTask}
+                            members={members}
+                          />
+                        ))}
+                        {inProgressTasks.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">No tasks in progress</p>
+                        )}
+                      </SortableContext>
+                    </DroppableColumn>
+
+                    {/* Done Column */}
+                    <DroppableColumn
+                      id="done-column"
+                      title="Done"
+                      count={doneTasks.length}
+                      color="bg-green-500"
+                    >
+                      <SortableContext items={doneTasks.map(t => t.task_id)} strategy={verticalListSortingStrategy}>
+                        {doneTasks.map((task) => (
+                          <TaskCard
+                            key={task.task_id}
+                            task={task}
+                            onStatusChange={handleUpdateTaskStatus}
+                            onDelete={handleDeleteTask}
+                            onAssign={handleAssignTask}
+                            members={members}
+                          />
+                        ))}
+                        {doneTasks.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">No completed tasks</p>
+                        )}
+                      </SortableContext>
+                    </DroppableColumn>
+                  </div>
+
+                  {/* Drag Overlay */}
+                  <DragOverlay>
+                    {activeTask ? (
+                      <div className="p-3 bg-background border-2 border-primary/50 rounded-lg space-y-2 shadow-2xl opacity-95 scale-105 rotate-2 ring-2 ring-primary/30">
+                        <p className="text-sm font-medium">{activeTask.title}</p>
+                        {activeTask.description && <p className="text-xs text-muted-foreground">{activeTask.description}</p>}
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {activeTask.effort}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {activeTask.status === "ToDo" ? "To Do" : activeTask.status === "InProgress" ? "In Progress" : "Done"}
+                          </Badge>
+                        </div>
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              </motion.div>
+            </TabsContent>
+            {/* Schedule Tab */}
+            <TabsContent value="schedule" className="space-y-6 as-child">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Time Remaining Card */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Timer className="h-5 w-5 text-primary" />
+                        Hackathon Timer
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center space-y-4">
+                        <div className="text-3xl font-bold text-primary">{timeRemaining}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Started: {project.created_at ? new Date(project.created_at).toLocaleDateString() : "Unknown"}
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-primary h-2 rounded-full transition-all duration-300"
+                            style={{
+                              width: `${Math.max(0, Math.min(100,
+                                ((new Date().getTime() - new Date(project.created_at).getTime()) /
+                                  (new Date(project.deadline).getTime() - new Date(project.created_at).getTime())) * 100
+                              ))}%`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Work Session Tracker */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Coffee className="h-5 w-5 text-amber-500" />
+                        Work Session
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {currentWorkSession ? (
+                          <div className="text-center">
+                            <div className="text-lg font-medium text-green-600">Session Active</div>
+                            <div className="text-sm text-muted-foreground">
+                              Started: {currentWorkSession.start.toLocaleTimeString()}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => setCurrentWorkSession(null)}
+                            >
+                              <Pause className="mr-2 h-4 w-4" />
+                              End Session
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-center">
+                            <div className="text-lg font-medium text-muted-foreground">No Active Session</div>
+                            <Button
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => setCurrentWorkSession({ start: new Date(), duration: 25 })}
+                            >
+                              <Play className="mr-2 h-4 w-4" />
+                              Start Work Session
+                            </Button>
+                          </div>
+                        )}
+
+                        {nextBreakTime && (
+                          <div className="text-center p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <div className="text-sm font-medium text-amber-800">Next Break</div>
+                            <div className="text-xs text-amber-600">{nextBreakTime.toLocaleTimeString()}</div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Quick Schedule */}
+                  <Card className="md:col-span-2">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-blue-500" />
+                        Suggested Schedule
+                      </CardTitle>
+                      <CardDescription>
+                        Recommended timeline for your hackathon
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {(() => {
+                          const start = new Date(project.created_at)
+                          const end = new Date(project.deadline)
+                          const totalDuration = end.getTime() - start.getTime()
+
+                          const phases = [
+                            { name: "Planning & Setup", percent: 15, icon: Lightbulb, color: "text-yellow-600" },
+                            { name: "Core Development", percent: 50, icon: CheckSquare, color: "text-blue-600" },
+                            { name: "Testing & Polish", percent: 20, icon: Target, color: "text-green-600" },
+                            { name: "Presentation Prep", percent: 15, icon: Users, color: "text-purple-600" }
+                          ]
+
+                          let currentPercent = 0
+                          return phases.map((phase, i) => {
+                            const phaseStart = new Date(start.getTime() + (currentPercent / 100) * totalDuration)
+                            const phaseEnd = new Date(start.getTime() + ((currentPercent + phase.percent) / 100) * totalDuration)
+                            currentPercent += phase.percent
+
+                            const Icon = phase.icon
+                            const isActive = new Date() >= phaseStart && new Date() <= phaseEnd
+
+                            return (
+                              <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${isActive ? 'bg-primary/5 border-primary/20' : 'bg-muted/30'}`}>
+                                <Icon className={`h-5 w-5 ${phase.color}`} />
+                                <div className="flex-1">
+                                  <div className="font-medium">{phase.name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {phaseStart.toLocaleDateString()} {phaseStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {phaseEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                </div>
+                                <Badge variant={isActive ? "default" : "secondary"}>
+                                  {phase.percent}%
+                                </Badge>
+                              </div>
+                            )
+                          })
+                        })()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </motion.div>
+            </TabsContent>
+
+            {/* Analytics Tab */}
+            <TabsContent value="analytics" className="space-y-6 as-child">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="md:max-w-md mx-auto">
                   <ProjectHealth
                     project={project}
                     tasks={tasks}
@@ -1577,998 +1963,591 @@ export default function ProjectPage() {
                     now={currentTime}
                   />
                 </div>
-              </div>
-            )}
-          </TabsContent>
-          {/* Tasks Tab */}
-          <TabsContent value="tasks" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Task Board</h2>
-              <Dialog open={addTaskDialogOpen} onOpenChange={setAddTaskDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Task
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New Task</DialogTitle>
-                    <DialogDescription>Create a new task for your project</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 pt-4">
-                    <Input
-                      placeholder="Task title"
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                    />
-                    <Textarea
-                      placeholder="Task description (optional)"
-                      value={newTaskDescription}
-                      onChange={(e) => setNewTaskDescription(e.target.value)}
-                      rows={3}
-                    />
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Effort Level</Label>
-                        <Select value={newTaskEffort} onValueChange={(value) => setNewTaskEffort(value as "Low" | "Medium" | "High")}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Low">Low</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="High">High</SelectItem>
-                          </SelectContent>
-                        </Select>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                  {/* Task Progress */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">Task Progress</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{doneTasks.length}/{tasks.length}</div>
+                      <div className="text-xs text-muted-foreground">Tasks Completed</div>
+                      <div className="w-full bg-muted rounded-full h-2 mt-2">
+                        <div
+                          className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${tasks.length > 0 ? (doneTasks.length / tasks.length) * 100 : 0}%` }}
+                        />
                       </div>
+                    </CardContent>
+                  </Card>
 
-                      <div className="space-y-2">
-                        <Label>Priority</Label>
-                        <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as "Low" | "Medium" | "High" | "Critical")}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Low">Low</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="High">High</SelectItem>
-                            <SelectItem value="Critical">Critical</SelectItem>
-                          </SelectContent>
-                        </Select>
+                  {/* Team Velocity */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">Team Velocity</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-blue-600">
+                        {(() => {
+                          const hoursElapsed = Math.max(1, (new Date().getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60))
+                          return (doneTasks.length / hoursElapsed).toFixed(1)
+                        })()}
                       </div>
-                    </div>
+                      <div className="text-xs text-muted-foreground">Tasks/Hour</div>
+                      <div className="flex items-center gap-1 mt-2">
+                        <TrendingUp className="h-3 w-3 text-green-500" />
+                        <span className="text-xs text-green-600">On Track</span>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                    <div className="space-y-2">
-                      <Label>Assign to</Label>
-                      <Select value={newTaskAssignee || "unassigned"} onValueChange={(value) => setNewTaskAssignee(value === "unassigned" ? null : value)}>
-                        <SelectTrigger>
-                          <SelectValue>
-                            {newTaskAssignee ? (
-                              (() => {
-                                const member = members.find(m => m.user_id === newTaskAssignee)
-                                return member ? (
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                                      {member?.name ? member.name.charAt(0).toUpperCase() : "?"}
-                                    </div>
-                                    <span>{member.name}</span>
+                  {/* Active Members */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">Active Members</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-purple-600">{members.length}</div>
+                      <div className="text-xs text-muted-foreground">Team Members</div>
+                      <div className="flex items-center gap-1 mt-2">
+                        <div className="flex -space-x-1">
+                          {members.slice(0, 3).map((member, i) => (
+                            <div key={i} className="h-6 w-6 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center text-xs font-bold text-primary">
+                              {member?.name ? member.name.charAt(0).toUpperCase() : "?"}
+                            </div>
+                          ))}
+                          {members.length > 3 && (
+                            <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs">
+                              +{members.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Time Efficiency */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">Time Efficiency</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-amber-600">
+                        {(() => {
+                          const totalHours = project.duration === "24h" ? 24 : 48
+                          const elapsedHours = (new Date().getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60)
+                          const efficiency = Math.min(100, (doneTasks.length / Math.max(1, elapsedHours / totalHours * tasks.length)) * 100)
+                          return Math.round(efficiency)
+                        })()}%
+                      </div>
+                      <div className="text-xs text-muted-foreground">Efficiency Score</div>
+                      <div className="flex items-center gap-1 mt-2">
+                        <Target className="h-3 w-3 text-amber-500" />
+                        <span className="text-xs text-amber-600">Good Pace</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Detailed Analytics */}
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Task Distribution */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-primary" />
+                        Task Distribution
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">To Do</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-24 bg-muted rounded-full h-2">
+                              <div
+                                className="bg-slate-500 h-2 rounded-full"
+                                style={{ width: `${tasks.length > 0 ? (todoTasks.length / tasks.length) * 100 : 0}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-8">{todoTasks.length}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">In Progress</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-24 bg-muted rounded-full h-2">
+                              <div
+                                className="bg-blue-500 h-2 rounded-full"
+                                style={{ width: `${tasks.length > 0 ? (inProgressTasks.length / tasks.length) * 100 : 0}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-8">{inProgressTasks.length}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Done</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-24 bg-muted rounded-full h-2">
+                              <div
+                                className="bg-green-500 h-2 rounded-full"
+                                style={{ width: `${tasks.length > 0 ? (doneTasks.length / tasks.length) * 100 : 0}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-8">{doneTasks.length}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Recent Activity */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-green-500" />
+                        Recent Activity
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-48">
+                        <div className="space-y-3">
+                          {activities.length > 0 ? (
+                            activities.slice(0, 10).map((activity) => {
+                              const member = members.find(m => m.user_id === activity.user_id)
+                              return (
+                                <div key={activity.activity_id} className="flex items-start gap-3 text-sm">
+                                  <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                                    {member?.name.charAt(0).toUpperCase() || "?"}
                                   </div>
-                                ) : "Unassigned"
-                              })()
-                            ) : (
-                              "Unassigned"
-                            )}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="unassigned">
-                            <span className="text-muted-foreground">Unassigned</span>
-                          </SelectItem>
-                          {members.map((member, i) => (
-                            <SelectItem key={`${member.user_id}-${i}`} value={member.user_id}>
-                              <div className="flex items-center gap-2">
-                                <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm">{activity.description}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(activity.timestamp).toLocaleTimeString()}
+                                    </p>
+                                  </div>
+                                </div>
+                              )
+                            })
+                          ) : (
+                            <div className="text-center text-muted-foreground py-8">
+                              <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No recent activity</p>
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </div>
+              </motion.div>
+            </TabsContent>
+            {/* Mentor Tab */}
+            <TabsContent value="mentor" className="space-y-6 as-child">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className="h-[600px] flex flex-col">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      AI Mentor Chat
+                    </CardTitle>
+                    <CardDescription>Get guidance on priorities, debugging, and presentation tips</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col overflow-hidden">
+                    <ScrollArea className="flex-1 pr-4">
+                      <div className="space-y-4">
+                        {messages.length === 0 && (
+                          <div className="text-center text-muted-foreground py-8">
+                            <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>Start a conversation with your AI mentor</p>
+                            <p className="text-sm mt-2">Ask about priorities, technical challenges, or pitch preparation</p>
+                          </div>
+                        )}
+                        {messages.map((msg) => (
+                          <div
+                            key={msg.message_id}
+                            className={`flex ${msg.sender_type === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.sender_type === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                                }`}
+                            >
+                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    </ScrollArea>
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Input
+                        placeholder="Ask your AI mentor anything..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                        disabled={isSendingMessage || retryState.isRetrying}
+                      />
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={!chatInput.trim() || isSendingMessage || retryState.isRetrying}
+                      >
+                        {isSendingMessage ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : retryState.isRetrying ? (
+                          <Clock className="h-4 w-4" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </TabsContent>
+
+            {/* Team Tab */}
+            <TabsContent value="team" className="space-y-6 as-child">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="grid gap-6 lg:grid-cols-3">
+                  {/* GitHub History */}
+                  <div className="lg:col-span-3 space-y-4 border-2 border-dashed border-amber-500 p-4 rounded-xl bg-amber-50/50 min-h-[250px]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 px-1">
+                        <Github className="h-5 w-5 text-primary" />
+                        <h2 className="text-xl font-bold">GitHub Integration</h2>
+                      </div>
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800">New Feature</Badge>
+                    </div>
+                    <GithubHistory repoUrl={project.github_repo} />
+                  </div>
+
+                  {/* Team Members */}
+                  <Card className="lg:col-span-2">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-blue-500" />
+                        Team Members ({members.length})
+                      </CardTitle>
+                      <CardDescription>
+                        Manage your hackathon team
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {members.length > 0 ? (
+                          members.map((member, i) => (
+                            <div key={`${member.user_id}-${i}`} className="flex items-center justify-between p-4 border rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-lg">
                                   {member?.name ? member.name.charAt(0).toUpperCase() : "?"}
                                 </div>
-                                <span>{member.name}</span>
+                                <div>
+                                  <p className="font-medium">{member.name}</p>
+                                  <p className="text-sm text-muted-foreground">{member.email}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="outline" className="text-xs">
+                                      {member.role || "Member"}
+                                    </Badge>
+                                    <div className="flex items-center gap-1">
+                                      <div className={`h-2 w-2 rounded-full ${member.availability === "available" ? "bg-green-500" :
+                                        member.availability === "busy" ? "bg-yellow-500" : "bg-red-500"
+                                        }`} />
+                                      <span className="text-xs text-muted-foreground capitalize">
+                                        {member.availability || "available"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Button onClick={handleAddTask} disabled={!newTaskTitle.trim() || isAddingTask} className="w-full">
-                      {isAddingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Task"}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            <DndContext
-              sensors={sensors}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <div className="grid gap-4 md:grid-cols-3">
-                {/* Todo Column */}
-                <DroppableColumn
-                  id="todo-column"
-                  title="To Do"
-                  count={todoTasks.length}
-                  color="bg-slate-400"
-                >
-                  <SortableContext items={todoTasks.map(t => t.task_id)} strategy={verticalListSortingStrategy}>
-                    {todoTasks.map((task) => (
-                      <TaskCard
-                        key={task.task_id}
-                        task={task}
-                        onStatusChange={handleUpdateTaskStatus}
-                        onDelete={handleDeleteTask}
-                        onAssign={handleAssignTask}
-                        members={members}
-                      />
-                    ))}
-                    {todoTasks.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">No tasks yet</p>
-                    )}
-                  </SortableContext>
-                </DroppableColumn>
-
-                {/* In Progress Column */}
-                <DroppableColumn
-                  id="inprogress-column"
-                  title="In Progress"
-                  count={inProgressTasks.length}
-                  color="bg-blue-500"
-                >
-                  <SortableContext items={inProgressTasks.map(t => t.task_id)} strategy={verticalListSortingStrategy}>
-                    {inProgressTasks.map((task) => (
-                      <TaskCard
-                        key={task.task_id}
-                        task={task}
-                        onStatusChange={handleUpdateTaskStatus}
-                        onDelete={handleDeleteTask}
-                        onAssign={handleAssignTask}
-                        members={members}
-                      />
-                    ))}
-                    {inProgressTasks.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">No tasks in progress</p>
-                    )}
-                  </SortableContext>
-                </DroppableColumn>
-
-                {/* Done Column */}
-                <DroppableColumn
-                  id="done-column"
-                  title="Done"
-                  count={doneTasks.length}
-                  color="bg-green-500"
-                >
-                  <SortableContext items={doneTasks.map(t => t.task_id)} strategy={verticalListSortingStrategy}>
-                    {doneTasks.map((task) => (
-                      <TaskCard
-                        key={task.task_id}
-                        task={task}
-                        onStatusChange={handleUpdateTaskStatus}
-                        onDelete={handleDeleteTask}
-                        onAssign={handleAssignTask}
-                        members={members}
-                      />
-                    ))}
-                    {doneTasks.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">No completed tasks</p>
-                    )}
-                  </SortableContext>
-                </DroppableColumn>
-              </div>
-
-              {/* Drag Overlay */}
-              <DragOverlay>
-                {activeTask ? (
-                  <div className="p-3 bg-background border-2 border-primary/50 rounded-lg space-y-2 shadow-2xl opacity-95 scale-105 rotate-2 ring-2 ring-primary/30">
-                    <p className="text-sm font-medium">{activeTask.title}</p>
-                    {activeTask.description && <p className="text-xs text-muted-foreground">{activeTask.description}</p>}
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {activeTask.effort}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {activeTask.status === "ToDo" ? "To Do" : activeTask.status === "InProgress" ? "In Progress" : "Done"}
-                      </Badge>
-                    </div>
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          </TabsContent>
-          {/* Schedule Tab */}
-          <TabsContent value="schedule" className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Time Remaining Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Timer className="h-5 w-5 text-primary" />
-                    Hackathon Timer
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center space-y-4">
-                    <div className="text-3xl font-bold text-primary">{timeRemaining}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Started: {project.created_at ? new Date(project.created_at).toLocaleDateString() : "Unknown"}
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all duration-300"
-                        style={{
-                          width: `${Math.max(0, Math.min(100,
-                            ((new Date().getTime() - new Date(project.created_at).getTime()) /
-                              (new Date(project.deadline).getTime() - new Date(project.created_at).getTime())) * 100
-                          ))}%`
-                        }}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Work Session Tracker */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Coffee className="h-5 w-5 text-amber-500" />
-                    Work Session
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {currentWorkSession ? (
-                      <div className="text-center">
-                        <div className="text-lg font-medium text-green-600">Session Active</div>
-                        <div className="text-sm text-muted-foreground">
-                          Started: {currentWorkSession.start.toLocaleTimeString()}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => setCurrentWorkSession(null)}
-                        >
-                          <Pause className="mr-2 h-4 w-4" />
-                          End Session
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <div className="text-lg font-medium text-muted-foreground">No Active Session</div>
-                        <Button
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => setCurrentWorkSession({ start: new Date(), duration: 25 })}
-                        >
-                          <Play className="mr-2 h-4 w-4" />
-                          Start Work Session
-                        </Button>
-                      </div>
-                    )}
-
-                    {nextBreakTime && (
-                      <div className="text-center p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div className="text-sm font-medium text-amber-800">Next Break</div>
-                        <div className="text-xs text-amber-600">{nextBreakTime.toLocaleTimeString()}</div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Schedule */}
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-blue-500" />
-                    Suggested Schedule
-                  </CardTitle>
-                  <CardDescription>
-                    Recommended timeline for your hackathon
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {(() => {
-                      const start = new Date(project.created_at)
-                      const end = new Date(project.deadline)
-                      const totalDuration = end.getTime() - start.getTime()
-
-                      const phases = [
-                        { name: "Planning & Setup", percent: 15, icon: Lightbulb, color: "text-yellow-600" },
-                        { name: "Core Development", percent: 50, icon: CheckSquare, color: "text-blue-600" },
-                        { name: "Testing & Polish", percent: 20, icon: Target, color: "text-green-600" },
-                        { name: "Presentation Prep", percent: 15, icon: Users, color: "text-purple-600" }
-                      ]
-
-                      let currentPercent = 0
-                      return phases.map((phase, i) => {
-                        const phaseStart = new Date(start.getTime() + (currentPercent / 100) * totalDuration)
-                        const phaseEnd = new Date(start.getTime() + ((currentPercent + phase.percent) / 100) * totalDuration)
-                        currentPercent += phase.percent
-
-                        const Icon = phase.icon
-                        const isActive = new Date() >= phaseStart && new Date() <= phaseEnd
-
-                        return (
-                          <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${isActive ? 'bg-primary/5 border-primary/20' : 'bg-muted/30'}`}>
-                            <Icon className={`h-5 w-5 ${phase.color}`} />
-                            <div className="flex-1">
-                              <div className="font-medium">{phase.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {phaseStart.toLocaleDateString()} {phaseStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {phaseEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              <div className="flex items-center gap-2">
+                                {member.github_username && (
+                                  <Button variant="ghost" size="sm" asChild>
+                                    <a href={`https://github.com/${member.github_username}`} target="_blank" rel="noopener noreferrer">
+                                      <Github className="h-4 w-4" />
+                                    </a>
+                                  </Button>
+                                )}
+                                {project.created_by === user?.uid && member.user_id !== user?.uid && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRemoveMember(member.user_id, member.name)}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </div>
                             </div>
-                            <Badge variant={isActive ? "default" : "secondary"}>
-                              {phase.percent}%
-                            </Badge>
+                          ))
+                        ) : (
+                          <div className="text-center text-muted-foreground py-8">
+                            <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No team members yet</p>
+                            <p className="text-sm mt-2">Share your join code to invite members</p>
                           </div>
-                        )
-                      })
-                    })()}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
 
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="md:max-w-md mx-auto">
-              <ProjectHealth
-                project={project}
-                tasks={tasks}
-                members={members}
-                commitsCount={commitsCount}
-                now={currentTime}
-              />
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {/* Task Progress */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Task Progress</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{doneTasks.length}/{tasks.length}</div>
-                  <div className="text-xs text-muted-foreground">Tasks Completed</div>
-                  <div className="w-full bg-muted rounded-full h-2 mt-2">
-                    <div
-                      className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${tasks.length > 0 ? (doneTasks.length / tasks.length) * 100 : 0}%` }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Team Velocity */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Team Velocity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {(() => {
-                      const hoursElapsed = Math.max(1, (new Date().getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60))
-                      return (doneTasks.length / hoursElapsed).toFixed(1)
-                    })()}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Tasks/Hour</div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-3 w-3 text-green-500" />
-                    <span className="text-xs text-green-600">On Track</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Active Members */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Active Members</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-purple-600">{members.length}</div>
-                  <div className="text-xs text-muted-foreground">Team Members</div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <div className="flex -space-x-1">
-                      {members.slice(0, 3).map((member, i) => (
-                        <div key={i} className="h-6 w-6 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center text-xs font-bold text-primary">
-                          {member?.name ? member.name.charAt(0).toUpperCase() : "?"}
-                        </div>
-                      ))}
-                      {members.length > 3 && (
-                        <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs">
-                          +{members.length - 3}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Time Efficiency */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Time Efficiency</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-amber-600">
-                    {(() => {
-                      const totalHours = project.duration === "24h" ? 24 : 48
-                      const elapsedHours = (new Date().getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60)
-                      const efficiency = Math.min(100, (doneTasks.length / Math.max(1, elapsedHours / totalHours * tasks.length)) * 100)
-                      return Math.round(efficiency)
-                    })()}%
-                  </div>
-                  <div className="text-xs text-muted-foreground">Efficiency Score</div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <Target className="h-3 w-3 text-amber-500" />
-                    <span className="text-xs text-amber-600">Good Pace</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Detailed Analytics */}
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Task Distribution */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                    Task Distribution
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">To Do</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 bg-muted rounded-full h-2">
-                          <div
-                            className="bg-slate-500 h-2 rounded-full"
-                            style={{ width: `${tasks.length > 0 ? (todoTasks.length / tasks.length) * 100 : 0}%` }}
+                  {/* Project Settings */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-gray-500" />
+                        Project Settings
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>GitHub Repository</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="https://github.com/user/repo"
+                            value={project.github_repo || ""}
+                            onChange={(e) => handleUpdateProjectUrls({ github_repo: e.target.value })}
                           />
                         </div>
-                        <span className="text-sm font-medium w-8">{todoTasks.length}</span>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">In Progress</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 bg-muted rounded-full h-2">
-                          <div
-                            className="bg-blue-500 h-2 rounded-full"
-                            style={{ width: `${tasks.length > 0 ? (inProgressTasks.length / tasks.length) * 100 : 0}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium w-8">{inProgressTasks.length}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Done</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 bg-muted rounded-full h-2">
-                          <div
-                            className="bg-green-500 h-2 rounded-full"
-                            style={{ width: `${tasks.length > 0 ? (doneTasks.length / tasks.length) * 100 : 0}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium w-8">{doneTasks.length}</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
 
-              {/* Recent Activity */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-green-500" />
-                    Recent Activity
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-48">
-                    <div className="space-y-3">
-                      {activities.length > 0 ? (
-                        activities.slice(0, 10).map((activity) => {
-                          const member = members.find(m => m.user_id === activity.user_id)
-                          return (
-                            <div key={activity.activity_id} className="flex items-start gap-3 text-sm">
-                              <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                                {member?.name.charAt(0).toUpperCase() || "?"}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm">{activity.description}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(activity.timestamp).toLocaleTimeString()}
-                                </p>
-                              </div>
+                      <div className="space-y-2">
+                        <Label>Demo URL</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="https://your-demo.com"
+                            value={project.demo_url || ""}
+                            onChange={(e) => handleUpdateProjectUrls({ demo_url: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t">
+                        <Button variant="outline" className="w-full" asChild>
+                          <a href="/dashboard">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Dashboard
+                          </a>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Shared Resources */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Share2 className="h-5 w-5 text-green-500" />
+                        Shared Resources ({resources.length})
+                      </div>
+                      <Dialog open={resourceDialogOpen} onOpenChange={handleResourceDialogClose}>
+                        <DialogTrigger asChild>
+                          <Button size="sm">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Resource
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Share a Resource</DialogTitle>
+                            <DialogDescription>
+                              Share files, links, or notes with your team
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 pt-4">
+                            <div className="space-y-2">
+                              <Label>Resource Name</Label>
+                              <Input
+                                placeholder="Resource name"
+                                value={resourceName}
+                                onChange={(e) => setResourceName(e.target.value)}
+                              />
                             </div>
+
+                            <div className="space-y-2">
+                              <Label>Type</Label>
+                              <Select value={resourceType} onValueChange={(value) => setResourceType(value as any)}>
+                                <SelectTrigger className="cursor-pointer">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="link">Link</SelectItem>
+                                  <SelectItem value="file">File</SelectItem>
+                                  <SelectItem value="note">Note</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {resourceType === "link" && (
+                              <div className="space-y-2">
+                                <Label>URL</Label>
+                                <Input
+                                  placeholder="https://..."
+                                  value={resourceUrl}
+                                  onChange={(e) => setResourceUrl(e.target.value)}
+                                />
+                              </div>
+                            )}
+
+                            {resourceType === "file" && (
+                              <div className="space-y-2">
+                                <Label>File</Label>
+                                <Input
+                                  type="file"
+                                  ref={fileInputRef}
+                                  onChange={handleFileSelect}
+                                  accept=".pdf,.doc,.docx,.txt,.md,.png,.jpg,.jpeg,.gif,.zip"
+                                />
+                                {selectedFile && (
+                                  <p className="text-sm text-muted-foreground">
+                                    Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {resourceType === "note" && (
+                              <div className="space-y-2">
+                                <Label>Content</Label>
+                                <Textarea
+                                  placeholder="Write your note here..."
+                                  value={resourceContent}
+                                  onChange={(e) => setResourceContent(e.target.value)}
+                                  rows={4}
+                                />
+                              </div>
+                            )}
+
+                            <Button
+                              onClick={handleAddResource}
+                              disabled={!resourceName.trim() || isUploadingResource ||
+                                (resourceType === "link" && !resourceUrl.trim()) ||
+                                (resourceType === "note" && !resourceContent.trim()) ||
+                                (resourceType === "file" && !selectedFile)
+                              }
+                              className="w-full"
+                            >
+                              {isUploadingResource ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Upload className="mr-2 h-4 w-4" />
+                                  Share Resource
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {resources.length > 0 ? (
+                        resources.map((resource) => {
+                          const uploader = members.find(m => m.user_id === resource.uploaded_by)
+                          const canDelete = resource.uploaded_by === user?.uid
+
+                          return (
+                            <Card key={resource.resource_id} className="relative">
+                              <CardContent className="p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    {resource.type === "file" && <FileText className="h-4 w-4 text-blue-500" />}
+                                    {resource.type === "link" && <Link className="h-4 w-4 text-green-500" />}
+                                    {resource.type === "note" && <FileText className="h-4 w-4 text-amber-500" />}
+                                    <span className="font-medium text-sm">{resource.name}</span>
+                                  </div>
+                                  {canDelete && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteResource(resource)}
+                                      className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+
+                                <p className="text-xs text-muted-foreground mb-3">
+                                  By {uploader?.name || "Unknown"} • {new Date(resource.created_at).toLocaleDateString()}
+                                </p>
+
+                                <div className="flex gap-2">
+                                  {resource.type === "link" && resource.url && (
+                                    <Button variant="outline" size="sm" asChild className="flex-1">
+                                      <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                                        <Eye className="mr-1 h-3 w-3" />
+                                        Open
+                                      </a>
+                                    </Button>
+                                  )}
+
+                                  {resource.type === "file" && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleDownloadFile(resource)}
+                                      className="flex-1"
+                                    >
+                                      <Download className="mr-1 h-3 w-3" />
+                                      Download
+                                    </Button>
+                                  )}
+
+                                  {resource.type === "note" && resource.content && (
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="flex-1">
+                                          <Eye className="mr-1 h-3 w-3" />
+                                          View
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                        <DialogHeader>
+                                          <DialogTitle>{resource.name}</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="pt-4">
+                                          <div className="p-4 bg-muted rounded-lg">
+                                            <p className="text-sm whitespace-pre-wrap">{resource.content}</p>
+                                          </div>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
                           )
                         })
                       ) : (
-                        <div className="text-center text-muted-foreground py-8">
-                          <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">No recent activity</p>
+                        <div className="col-span-full text-center text-muted-foreground py-12">
+                          <Share2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No shared resources yet</p>
+                          <p className="text-sm mt-2">Share files, links, or notes with your team</p>
                         </div>
                       )}
                     </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Mentor Tab */}
-          <TabsContent value="mentor" className="space-y-6">
-            <Card className="h-[600px] flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  AI Mentor Chat
-                </CardTitle>
-                <CardDescription>Get guidance on priorities, debugging, and presentation tips</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col overflow-hidden">
-                <ScrollArea className="flex-1 pr-4">
-                  <div className="space-y-4">
-                    {messages.length === 0 && (
-                      <div className="text-center text-muted-foreground py-8">
-                        <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Start a conversation with your AI mentor</p>
-                        <p className="text-sm mt-2">Ask about priorities, technical challenges, or pitch preparation</p>
-                      </div>
-                    )}
-                    {messages.map((msg) => (
-                      <div
-                        key={msg.message_id}
-                        className={`flex ${msg.sender_type === "user" ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.sender_type === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-                            }`}
-                        >
-                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                        </div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </ScrollArea>
-                <div className="flex gap-2 pt-4 border-t">
-                  <Input
-                    placeholder="Ask your AI mentor anything..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                    disabled={isSendingMessage || retryState.isRetrying}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!chatInput.trim() || isSendingMessage || retryState.isRetrying}
-                  >
-                    {isSendingMessage ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : retryState.isRetrying ? (
-                      <Clock className="h-4 w-4" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Team Tab */}
-          <TabsContent value="team" className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-3">
-              {/* GitHub History */}
-              <div className="lg:col-span-3 space-y-4 border-2 border-dashed border-amber-500 p-4 rounded-xl bg-amber-50/50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 px-1">
-                    <Github className="h-5 w-5 text-primary" />
-                    <h2 className="text-xl font-bold">GitHub Integration</h2>
-                  </div>
-                  <Badge variant="outline" className="bg-amber-100 text-amber-800">New Feature</Badge>
-                </div>
-                <GithubHistory repoUrl={project.github_repo} />
-              </div>
-
-              {/* Team Members */}
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-500" />
-                    Team Members ({members.length})
-                  </CardTitle>
-                  <CardDescription>
-                    Manage your hackathon team
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {members.length > 0 ? (
-                      members.map((member, i) => (
-                        <div key={`${member.user_id}-${i}`} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-lg">
-                              {member?.name ? member.name.charAt(0).toUpperCase() : "?"}
-                            </div>
-                            <div>
-                              <p className="font-medium">{member.name}</p>
-                              <p className="text-sm text-muted-foreground">{member.email}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-xs">
-                                  {member.role || "Member"}
-                                </Badge>
-                                <div className="flex items-center gap-1">
-                                  <div className={`h-2 w-2 rounded-full ${member.availability === "available" ? "bg-green-500" :
-                                    member.availability === "busy" ? "bg-yellow-500" : "bg-red-500"
-                                    }`} />
-                                  <span className="text-xs text-muted-foreground capitalize">
-                                    {member.availability || "available"}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {member.github_username && (
-                              <Button variant="ghost" size="sm" asChild>
-                                <a href={`https://github.com/${member.github_username}`} target="_blank" rel="noopener noreferrer">
-                                  <Github className="h-4 w-4" />
-                                </a>
-                              </Button>
-                            )}
-                            {project.created_by === user?.uid && member.user_id !== user?.uid && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveMember(member.user_id, member.name)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center text-muted-foreground py-8">
-                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No team members yet</p>
-                        <p className="text-sm mt-2">Share your join code to invite members</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Project Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5 text-gray-500" />
-                    Project Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>GitHub Repository</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="https://github.com/user/repo"
-                        value={project.github_repo || ""}
-                        onChange={(e) => handleUpdateProjectUrls({ github_repo: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Demo URL</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="https://your-demo.com"
-                        value={project.demo_url || ""}
-                        onChange={(e) => handleUpdateProjectUrls({ demo_url: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t">
-                    <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full">
-                          <Settings className="mr-2 h-4 w-4" />
-                          Update Profile
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Update Your Profile</DialogTitle>
-                          <DialogDescription>
-                            Update your role and skills for better team coordination
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 pt-4">
-                          <div className="space-y-2">
-                            <Label>Role</Label>
-                            <Select value={profileRole} onValueChange={(value) => setProfileRole(value as any)}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="lead">Team Lead</SelectItem>
-                                <SelectItem value="developer">Developer</SelectItem>
-                                <SelectItem value="designer">Designer</SelectItem>
-                                <SelectItem value="researcher">Researcher</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Skills (comma-separated)</Label>
-                            <Input
-                              placeholder="React, Node.js, Python, Design..."
-                              value={profileSkills}
-                              onChange={(e) => setProfileSkills(e.target.value)}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Availability</Label>
-                            <Select value={profileAvailability} onValueChange={(value) => setProfileAvailability(value as any)}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="available">Available</SelectItem>
-                                <SelectItem value="busy">Busy</SelectItem>
-                                <SelectItem value="offline">Offline</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>GitHub Username</Label>
-                            <Input
-                              placeholder="your-username"
-                              value={profileGithub}
-                              onChange={(e) => setProfileGithub(e.target.value)}
-                            />
-                          </div>
-
-                          <Button onClick={handleUpdateProfile} className="w-full">
-                            Update Profile
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Shared Resources */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Share2 className="h-5 w-5 text-green-500" />
-                    Shared Resources ({resources.length})
-                  </div>
-                  <Dialog open={resourceDialogOpen} onOpenChange={handleResourceDialogClose}>
-                    <DialogTrigger asChild>
-                      <Button size="sm">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Resource
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Share a Resource</DialogTitle>
-                        <DialogDescription>
-                          Share files, links, or notes with your team
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 pt-4">
-                        <div className="space-y-2">
-                          <Label>Resource Name</Label>
-                          <Input
-                            placeholder="Resource name"
-                            value={resourceName}
-                            onChange={(e) => setResourceName(e.target.value)}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Type</Label>
-                          <Select value={resourceType} onValueChange={(value) => setResourceType(value as any)}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="link">Link</SelectItem>
-                              <SelectItem value="file">File</SelectItem>
-                              <SelectItem value="note">Note</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {resourceType === "link" && (
-                          <div className="space-y-2">
-                            <Label>URL</Label>
-                            <Input
-                              placeholder="https://..."
-                              value={resourceUrl}
-                              onChange={(e) => setResourceUrl(e.target.value)}
-                            />
-                          </div>
-                        )}
-
-                        {resourceType === "file" && (
-                          <div className="space-y-2">
-                            <Label>File</Label>
-                            <Input
-                              type="file"
-                              ref={fileInputRef}
-                              onChange={handleFileSelect}
-                              accept=".pdf,.doc,.docx,.txt,.md,.png,.jpg,.jpeg,.gif,.zip"
-                            />
-                            {selectedFile && (
-                              <p className="text-sm text-muted-foreground">
-                                Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        {resourceType === "note" && (
-                          <div className="space-y-2">
-                            <Label>Content</Label>
-                            <Textarea
-                              placeholder="Write your note here..."
-                              value={resourceContent}
-                              onChange={(e) => setResourceContent(e.target.value)}
-                              rows={4}
-                            />
-                          </div>
-                        )}
-
-                        <Button
-                          onClick={handleAddResource}
-                          disabled={!resourceName.trim() || isUploadingResource ||
-                            (resourceType === "link" && !resourceUrl.trim()) ||
-                            (resourceType === "note" && !resourceContent.trim()) ||
-                            (resourceType === "file" && !selectedFile)
-                          }
-                          className="w-full"
-                        >
-                          {isUploadingResource ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Upload className="mr-2 h-4 w-4" />
-                              Share Resource
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {resources.length > 0 ? (
-                    resources.map((resource) => {
-                      const uploader = members.find(m => m.user_id === resource.uploaded_by)
-                      const canDelete = resource.uploaded_by === user?.uid
-
-                      return (
-                        <Card key={resource.resource_id} className="relative">
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                {resource.type === "file" && <FileText className="h-4 w-4 text-blue-500" />}
-                                {resource.type === "link" && <Link className="h-4 w-4 text-green-500" />}
-                                {resource.type === "note" && <FileText className="h-4 w-4 text-amber-500" />}
-                                <span className="font-medium text-sm">{resource.name}</span>
-                              </div>
-                              {canDelete && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteResource(resource)}
-                                  className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-
-                            <p className="text-xs text-muted-foreground mb-3">
-                              By {uploader?.name || "Unknown"} • {new Date(resource.created_at).toLocaleDateString()}
-                            </p>
-
-                            <div className="flex gap-2">
-                              {resource.type === "link" && resource.url && (
-                                <Button variant="outline" size="sm" asChild className="flex-1">
-                                  <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                                    <Eye className="mr-1 h-3 w-3" />
-                                    Open
-                                  </a>
-                                </Button>
-                              )}
-
-                              {resource.type === "file" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDownloadFile(resource)}
-                                  className="flex-1"
-                                >
-                                  <Download className="mr-1 h-3 w-3" />
-                                  Download
-                                </Button>
-                              )}
-
-                              {resource.type === "note" && resource.content && (
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="flex-1">
-                                      <Eye className="mr-1 h-3 w-3" />
-                                      View
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>{resource.name}</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="pt-4">
-                                      <div className="p-4 bg-muted rounded-lg">
-                                        <p className="text-sm whitespace-pre-wrap">{resource.content}</p>
-                                      </div>
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    })
-                  ) : (
-                    <div className="col-span-full text-center text-muted-foreground py-12">
-                      <Share2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No shared resources yet</p>
-                      <p className="text-sm mt-2">Share files, links, or notes with your team</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </TabsContent>
+          </div>
         </Tabs>
       </main>
-    </div>
+    </div >
   )
 }
 function DroppableColumn({
@@ -2712,7 +2691,7 @@ function TaskCard({
           }}
         >
           <SelectTrigger
-            className="h-7 w-28 text-xs pointer-events-auto transition-all duration-100 hover:bg-accent"
+            className="h-7 w-28 text-xs pointer-events-auto cursor-pointer transition-all duration-100 hover:bg-accent"
             onClick={(e) => {
               e.stopPropagation()
               e.preventDefault()
@@ -2739,7 +2718,7 @@ function TaskCard({
           }}
         >
           <SelectTrigger
-            className="h-7 w-32 text-xs pointer-events-auto transition-all duration-100 hover:bg-accent"
+            className="h-7 w-32 text-xs pointer-events-auto cursor-pointer transition-all duration-100 hover:bg-accent"
             onClick={(e) => {
               e.stopPropagation()
               e.preventDefault()

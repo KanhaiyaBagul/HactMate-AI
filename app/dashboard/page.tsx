@@ -38,6 +38,9 @@ import {
   Shield,
   Key,
   Mail,
+  User,
+  Github,
+  Laptop,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatDistanceToNow } from "date-fns"
@@ -81,11 +84,57 @@ export default function DashboardPage() {
 
   // Profile Settings
   const [profileDialogOpen, setProfileDialogOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("profile")
+
+  // Security State
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
   const [isSendingReset, setIsSendingReset] = useState(false)
-  const { updateUserPassword, resetPassword } = useAuth()
+
+  // Profile State
+  const [profileName, setProfileName] = useState("")
+  const [profileSkills, setProfileSkills] = useState("")
+  const [profileGithub, setProfileGithub] = useState("")
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
+
+  const { updateUserPassword, resetPassword, updateUserProfile } = useAuth()
+
+  // Sync profile state when dialog opens
+  useEffect(() => {
+    if (profileDialogOpen && userProfile) {
+      setProfileName(userProfile.name || "")
+      setProfileSkills(userProfile.skills?.join(", ") || "")
+      setProfileGithub(userProfile.github_username || "")
+    }
+  }, [profileDialogOpen, userProfile])
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsUpdatingProfile(true)
+    try {
+      const skillsArray = profileSkills.split(",").map(s => s.trim()).filter(s => s.length > 0)
+
+      await updateUserProfile({
+        name: profileName,
+        skills: skillsArray,
+        github_username: profileGithub
+      })
+
+      toast({
+        title: "Profile updated",
+        description: "Your profile details have been saved.",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update profile",
+        variant: "destructive"
+      })
+    } finally {
+      setIsUpdatingProfile(false)
+    }
+  }
 
   const handleResetEmail = async () => {
     if (!user?.email) return
@@ -349,11 +398,11 @@ export default function DashboardPage() {
                 <span className="text-sm text-muted-foreground">{user.email}</span>
               </div>
             )}
-            <Button variant="outline" size="sm" onClick={() => setProfileDialogOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => setProfileDialogOpen(true)} className="cursor-pointer">
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
-            <Button variant="ghost" onClick={handleLogout}>
+            <Button variant="ghost" onClick={handleLogout} className="cursor-pointer">
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
@@ -370,73 +419,138 @@ export default function DashboardPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 pt-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-lg font-semibold border-b pb-2">
-                <Shield className="h-5 w-5" />
-                Security
-              </div>
-              <form onSubmit={handleUpdatePassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
-                  <Input
-                    id="new-password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="New password"
-                    minLength={6}
-                    required
-                  />
+            <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="profile" className="cursor-pointer">Profile</TabsTrigger>
+                <TabsTrigger value="security" className="cursor-pointer">Security</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="profile" className="space-y-4">
+                <div className="flex items-center gap-2 text-lg font-semibold border-b pb-2">
+                  <User className="h-5 w-5" />
+                  Public Profile
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    minLength={6}
-                    required
-                  />
+
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="display-name">Display Name</Label>
+                    <Input
+                      id="display-name"
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      placeholder="Your Name"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="skills">My Skills</Label>
+                    <Input
+                      id="skills"
+                      value={profileSkills}
+                      onChange={(e) => setProfileSkills(e.target.value)}
+                      placeholder="React, Node.js, Python (comma separated)"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Used for AI task assignment recommendations.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="github">GitHub Username</Label>
+                    <div className="relative">
+                      <Github className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="github"
+                        value={profileGithub}
+                        onChange={(e) => setProfileGithub(e.target.value)}
+                        placeholder="octocat"
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  <Button type="submit" disabled={isUpdatingProfile} className="w-full">
+                    {isUpdatingProfile ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="security" className="space-y-4">
+                <div className="flex items-center gap-2 text-lg font-semibold border-b pb-2">
+                  <Shield className="h-5 w-5" />
+                  Security
                 </div>
-                <Button type="submit" disabled={isUpdatingPassword} className="w-full">
-                  {isUpdatingPassword ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Updating...
-                    </>
+                <form onSubmit={handleUpdatePassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="New password"
+                      minLength={6}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      minLength={6}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" disabled={isUpdatingPassword} className="w-full">
+                    {isUpdatingPassword ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Key className="h-4 w-4 mr-2" />
+                        Set/Update Password
+                      </>
+                    )}
+                  </Button>
+                </form>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleResetEmail}
+                  disabled={isSendingReset}
+                >
+                  {isSendingReset ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
-                    <>
-                      <Key className="h-4 w-4 mr-2" />
-                      Set/Update Password
-                    </>
+                    <Mail className="h-4 w-4 mr-2" />
                   )}
+                  Send Password Reset Email
                 </Button>
-              </form>
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or</span>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleResetEmail}
-                disabled={isSendingReset}
-              >
-                {isSendingReset ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Mail className="h-4 w-4 mr-2" />
-                )}
-                Send Password Reset Email
-              </Button>
-            </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </DialogContent>
       </Dialog>
@@ -456,7 +570,7 @@ export default function DashboardPage() {
         <div className="flex flex-wrap gap-4 mb-8">
           <Dialog open={createDialogOpen} onOpenChange={handleCreateDialogChange}>
             <DialogTrigger asChild>
-              <Button size="lg">
+              <Button size="lg" className="cursor-pointer">
                 <Plus className="h-5 w-5 mr-2" />
                 Create Project
               </Button>
@@ -542,7 +656,7 @@ export default function DashboardPage() {
 
           <Dialog open={joinDialogOpen} onOpenChange={handleJoinDialogChange}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="lg">
+              <Button variant="outline" size="lg" className="cursor-pointer">
                 <UserPlus className="h-5 w-5 mr-2" />
                 Join Project
               </Button>
@@ -591,7 +705,7 @@ export default function DashboardPage() {
             </DialogContent>
           </Dialog>
 
-          <Button variant="outline" size="lg" onClick={() => router.push("/docs-generator")}>
+          <Button variant="outline" size="lg" onClick={() => router.push("/docs-generator")} className="cursor-pointer">
             <FileText className="h-5 w-5 mr-2" />
             Generate Docs
           </Button>
@@ -600,7 +714,7 @@ export default function DashboardPage() {
         {/* Projects Grid */}
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold">Your Projects</h2>
-          <Button variant="ghost" size="sm" onClick={loadProjects} disabled={isLoadingProjects}>
+          <Button variant="ghost" size="sm" onClick={loadProjects} disabled={isLoadingProjects} className="cursor-pointer">
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingProjects ? "animate-spin" : ""}`} />
             Refresh
           </Button>
@@ -625,11 +739,11 @@ export default function DashboardPage() {
                   There was a problem connecting to the database. Create a new project to get started.
                 </p>
                 <div className="flex gap-3">
-                  <Button onClick={loadProjects}>
+                  <Button onClick={loadProjects} className="cursor-pointer">
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Try Again
                   </Button>
-                  <Button variant="outline" onClick={() => setCreateDialogOpen(true)}>
+                  <Button variant="outline" onClick={() => setCreateDialogOpen(true)} className="cursor-pointer">
                     <Plus className="h-4 w-4 mr-2" />
                     Create New Project
                   </Button>
@@ -647,11 +761,11 @@ export default function DashboardPage() {
                   Create your first project or join an existing one with a code from your team.
                 </p>
                 <div className="flex gap-3">
-                  <Button onClick={() => setCreateDialogOpen(true)}>
+                  <Button onClick={() => setCreateDialogOpen(true)} className="cursor-pointer">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Project
                   </Button>
-                  <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
+                  <Button variant="outline" onClick={() => setJoinDialogOpen(true)} className="cursor-pointer">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Join Project
                   </Button>
