@@ -213,18 +213,24 @@ export default function ProjectPage() {
   const timeRemaining = useMemo(() => {
     if (!project) return "Loading..."
 
-    const start = new Date(project.created_at)
-    const duration = project.duration === "24h" ? 24 : 48
-    const end = new Date(start.getTime() + duration * 60 * 60 * 1000)
+    if (!project) return "Loading..."
+
+    const end = new Date(project.deadline)
     const remaining = end.getTime() - currentTime
 
     if (remaining <= 0) return "Time's up! ⏰"
 
-    const hours = Math.floor(remaining / (1000 * 60 * 60))
+    // Calculate days, hours, minutes
+    const days = Math.floor(remaining / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
     const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
+    const seconds = Math.floor((remaining % (1000 * 60)) / 1000)
 
-    return `${hours}h ${minutes}m remaining`
-  }, [project?.created_at, project?.duration, currentTime])
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m ${seconds}s remaining`
+    }
+    return `${hours}h ${minutes}m ${seconds}s remaining`
+  }, [project?.created_at, project?.deadline, currentTime])
 
   // Set hasMounted on client and initialize currentTime
   useEffect(() => {
@@ -237,7 +243,7 @@ export default function ProjectPage() {
     if (!hasMounted) return
     const interval = setInterval(() => {
       setCurrentTime(Date.now())
-    }, 60000)
+    }, 1000)
     return () => clearInterval(interval)
   }, [hasMounted])
 
@@ -349,7 +355,7 @@ export default function ProjectPage() {
 
     const fetchCommitCount = async () => {
       try {
-        const response = await fetch(`/api/github/commits?url=${encodeURIComponent(project.github_repo)}`)
+        const response = await fetch(`/api/github/commits?url=${encodeURIComponent(project.github_repo || "")}`)
         const data = await response.json()
         if (response.ok && data.commits) {
           setCommitsCount(data.commits.length)
@@ -395,7 +401,7 @@ export default function ProjectPage() {
             action: "analyze_idea",
             data: {
               idea: ideaInput,
-              duration: project.duration,
+              deadline: project.deadline,
             },
           }),
         }),
@@ -449,7 +455,7 @@ export default function ProjectPage() {
             data: {
               features: project.idea?.features || [],
               projectName: project.name,
-              duration: project.duration,
+              deadline: project.deadline,
             },
           }),
         }),
@@ -1170,7 +1176,9 @@ export default function ProjectPage() {
               <div>
                 <h1 className="text-xl font-bold">{project.name}</h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Badge variant="outline">{project.duration}</Badge>
+                  <Badge variant="outline">
+                    {new Date(project.deadline).toLocaleDateString()}
+                  </Badge>
                   <div className="flex items-center gap-1">
                     <span>Code:</span>
                     <Badge
@@ -1801,7 +1809,7 @@ export default function ProjectPage() {
                         style={{
                           width: `${Math.max(0, Math.min(100,
                             ((new Date().getTime() - new Date(project.created_at).getTime()) /
-                              ((project.duration === "24h" ? 24 : 48) * 60 * 60 * 1000)) * 100
+                              (new Date(project.deadline).getTime() - new Date(project.created_at).getTime())) * 100
                           ))}%`
                         }}
                       />
@@ -1868,14 +1876,16 @@ export default function ProjectPage() {
                     Suggested Schedule
                   </CardTitle>
                   <CardDescription>
-                    Recommended timeline for your {project.duration} hackathon
+                    Recommended timeline for your hackathon
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {(() => {
                       const start = new Date(project.created_at)
-                      const duration = project.duration === "24h" ? 24 : 48
+                      const end = new Date(project.deadline)
+                      const totalDuration = end.getTime() - start.getTime()
+
                       const phases = [
                         { name: "Planning & Setup", percent: 15, icon: Lightbulb, color: "text-yellow-600" },
                         { name: "Core Development", percent: 50, icon: CheckSquare, color: "text-blue-600" },
@@ -1885,8 +1895,8 @@ export default function ProjectPage() {
 
                       let currentPercent = 0
                       return phases.map((phase, i) => {
-                        const phaseStart = new Date(start.getTime() + (currentPercent / 100) * duration * 60 * 60 * 1000)
-                        const phaseEnd = new Date(start.getTime() + ((currentPercent + phase.percent) / 100) * duration * 60 * 60 * 1000)
+                        const phaseStart = new Date(start.getTime() + (currentPercent / 100) * totalDuration)
+                        const phaseEnd = new Date(start.getTime() + ((currentPercent + phase.percent) / 100) * totalDuration)
                         currentPercent += phase.percent
 
                         const Icon = phase.icon

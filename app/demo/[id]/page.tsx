@@ -77,7 +77,7 @@ export default function DemoPage({ params }: { params: Promise<{ id: string }> }
             </div>
             <Badge variant="outline" className="text-lg px-4 py-2">
               <Clock className="h-4 w-4 mr-2" />
-              {project.duration} Hackathon
+              Ends {new Date(project.deadline).toLocaleDateString()}
             </Badge>
           </div>
         </div>

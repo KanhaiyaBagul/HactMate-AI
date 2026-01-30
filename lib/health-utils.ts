@@ -26,9 +26,8 @@ export function calculateProjectHealth(
 
     // 2. Time Pressure (25%)
     const start = new Date(project.created_at)
-    const duration = project.duration === "24h" ? 24 : 48
-    const end = new Date(start.getTime() + duration * 60 * 60 * 1000)
-    const totalDurationMs = duration * 60 * 60 * 1000
+    const end = new Date(project.deadline)
+    const totalDurationMs = end.getTime() - start.getTime()
     const elapsedMs = now - start.getTime()
     const progressRatio = Math.min(Math.max(elapsedMs / totalDurationMs, 0), 1)
 
@@ -41,8 +40,9 @@ export function calculateProjectHealth(
         : 100
 
     // 3. Commit Frequency (30%)
-    // Expecting at least 2 commits per member per 24h phase for "Full Health"
-    const expectedCommits = Math.max(members.length * (duration / 12), 1)
+    // Expecting at least 1 commit per member per 12 hours
+    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+    const expectedCommits = Math.max(members.length * (durationHours / 12), 1)
     const commitScore = Math.min((commitsCount / expectedCommits) * 100, 100)
 
     // 4. Contributor Activity (15%)

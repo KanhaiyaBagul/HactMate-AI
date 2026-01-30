@@ -11,6 +11,13 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Rocket,
   Users,
   Brain,
@@ -34,9 +41,37 @@ export default function LandingPage() {
   const [signupPassword, setSignupPassword] = useState("")
   const [signupName, setSignupName] = useState("")
 
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAsGuest } = useAuth()
+  const [resetEmail, setResetEmail] = useState("")
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAsGuest, resetPassword } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!resetEmail) return
+
+    setIsResetting(true)
+    try {
+      await resetPassword(resetEmail)
+      toast({
+        title: "Email sent",
+        description: "Check your email (including spam) for password reset instructions.",
+      })
+      setResetDialogOpen(false)
+      setResetEmail("")
+    } catch (error: any) {
+      toast({
+        title: "Failed to send email",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsResetting(false)
+    }
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -220,6 +255,16 @@ export default function LandingPage() {
                           onChange={(e) => setLoginPassword(e.target.value)}
                           required
                         />
+                        <div className="flex justify-end mt-1">
+                          <Button
+                            variant="link"
+                            className="p-0 h-auto text-xs text-muted-foreground hover:text-primary"
+                            type="button"
+                            onClick={() => setResetDialogOpen(true)}
+                          >
+                            Forgot password?
+                          </Button>
+                        </div>
                       </div>
                       <Button type="submit" className="w-full" disabled={isLoading}>
                         {isLoading ? "Signing in..." : "Sign In"}
@@ -310,6 +355,33 @@ export default function LandingPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Reset Password</DialogTitle>
+                  <DialogDescription>
+                    Enter your email address and we'll send you a link to reset your password.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email">Email</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isResetting}>
+                    {isResetting ? "Sending..." : "Send Reset Link"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </header>

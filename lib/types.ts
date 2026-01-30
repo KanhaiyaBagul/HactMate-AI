@@ -1,7 +1,9 @@
 export interface Project {
   project_id: string
   name: string
-  duration: "24h" | "48h"
+  /** @deprecated Use deadline instead */
+  duration?: "24h" | "48h"
+  deadline: Date
   created_by: string
   members: string[]
   join_code: string

@@ -39,14 +39,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 }
 
 // Projects
-export async function createProject(name: string, duration: "24h" | "48h", userId: string): Promise<string> {
+export async function createProject(name: string, deadline: Date, userId: string): Promise<string> {
   const db = getDb()
   const projectRef = doc(collection(db, "projects"))
 
   const project = {
     project_id: projectRef.id,
     name,
-    duration,
+    deadline,
     created_by: userId,
     members: [userId],
     join_code: generateJoinCode(),
@@ -67,10 +67,10 @@ export async function createProject(name: string, duration: "24h" | "48h", userI
     project_id: projectRef.id,
     user_id: userId,
     role: "admin",
-  }).catch(() => {})
+  }).catch(() => { })
 
   // Create default milestones in background
-  createDefaultMilestones(projectRef.id, duration).catch(() => {})
+  createDefaultMilestones(projectRef.id, deadline).catch(() => { })
 
   return projectRef.id
 }
@@ -81,9 +81,19 @@ export async function getProject(projectId: string): Promise<Project | null> {
     const projectDoc = await withTimeout(getDoc(doc(db, "projects", projectId)), 3000, null as any)
     if (!projectDoc || !projectDoc.exists?.()) return null
     const data = projectDoc.data()
+    const created_at = data.created_at?.toDate?.() || new Date()
+
+    // Migration: Calculate deadline from duration if missing
+    let deadline = data.deadline?.toDate?.()
+    if (!deadline && data.duration) {
+      const durationHours = data.duration === "24h" ? 24 : 48
+      deadline = new Date(created_at.getTime() + durationHours * 60 * 60 * 1000)
+    }
+
     return {
       ...data,
-      created_at: data.created_at?.toDate?.() || new Date(),
+      created_at,
+      deadline: deadline || new Date(created_at.getTime() + 48 * 60 * 60 * 1000), // Fallback
     } as Project
   } catch (error) {
     console.error("Error getting project:", error)
@@ -101,9 +111,19 @@ export async function getUserProjects(userId: string): Promise<Project[]> {
 
     const projects = snapshot.docs.map((doc: any) => {
       const data = doc.data()
+      const created_at = data.created_at?.toDate?.() || new Date()
+
+      // Migration: Calculate deadline from duration if missing
+      let deadline = data.deadline?.toDate?.()
+      if (!deadline && data.duration) {
+        const durationHours = data.duration === "24h" ? 24 : 48
+        deadline = new Date(created_at.getTime() + durationHours * 60 * 60 * 1000)
+      }
+
       return {
         ...data,
-        created_at: data.created_at?.toDate?.() || new Date(),
+        created_at,
+        deadline: deadline || new Date(created_at.getTime() + 48 * 60 * 60 * 1000), // Fallback
       } as Project
     })
 
@@ -209,9 +229,19 @@ export function subscribeToProject(projectId: string, callback: (project: Projec
       (doc) => {
         if (doc.exists()) {
           const data = doc.data()
+          const created_at = data.created_at?.toDate?.() || new Date()
+
+          // Migration: Calculate deadline from duration if missing
+          let deadline = data.deadline?.toDate?.()
+          if (!deadline && data.duration) {
+            const durationHours = data.duration === "24h" ? 24 : 48
+            deadline = new Date(created_at.getTime() + durationHours * 60 * 60 * 1000)
+          }
+
           callback({
             ...data,
-            created_at: data.created_at?.toDate?.() || new Date(),
+            created_at,
+            deadline: deadline || new Date(created_at.getTime() + 48 * 60 * 60 * 1000), // Fallback
           } as Project)
         } else {
           callback(null)
@@ -224,7 +254,7 @@ export function subscribeToProject(projectId: string, callback: (project: Projec
     )
   } catch {
     callback(null)
-    return () => {}
+    return () => { }
   }
 }
 
@@ -232,7 +262,7 @@ export function subscribeToProject(projectId: string, callback: (project: Projec
 export async function createTask(task: Omit<Task, "task_id" | "last_updated">): Promise<string> {
   const db = getDb()
   const taskRef = doc(collection(db, "tasks"))
-  
+
   // Filter out undefined values to avoid Firestore errors
   const cleanTask = Object.fromEntries(
     Object.entries({
@@ -241,7 +271,7 @@ export async function createTask(task: Omit<Task, "task_id" | "last_updated">): 
       last_updated: serverTimestamp(),
     }).filter(([_, value]) => value !== undefined)
   )
-  
+
   await setDoc(taskRef, cleanTask)
   return taskRef.id
 }
@@ -250,7 +280,7 @@ export async function addTask(task: Omit<Task, "task_id" | "last_updated">): Pro
   try {
     const db = getDb()
     const taskRef = doc(collection(db, "tasks"))
-    
+
     // Create the task data without undefined fields
     const taskData = {
       ...task,
@@ -262,14 +292,14 @@ export async function addTask(task: Omit<Task, "task_id" | "last_updated">): Pro
       dependencies: [],
       tags: [],
     }
-    
+
     // Only add due_date if it's defined
     if (task.due_date !== undefined) {
       taskData.due_date = task.due_date
     }
-    
+
     await setDoc(taskRef, taskData)
-    
+
     // Return the task with client-side dates for immediate UI update
     const newTask = {
       ...task,
@@ -281,7 +311,7 @@ export async function addTask(task: Omit<Task, "task_id" | "last_updated">): Pro
       dependencies: [],
       tags: [],
     }
-    
+
     return newTask as Task
   } catch (error) {
     console.error("Error adding task:", error)
@@ -295,7 +325,7 @@ export async function createTasks(tasks: Omit<Task, "task_id" | "last_updated">[
 
   for (const task of tasks) {
     const taskRef = doc(collection(db, "tasks"))
-    
+
     // Filter out undefined values to avoid Firestore errors
     const cleanTask = Object.fromEntries(
       Object.entries({
@@ -304,7 +334,7 @@ export async function createTasks(tasks: Omit<Task, "task_id" | "last_updated">[
         last_updated: serverTimestamp(),
       }).filter(([_, value]) => value !== undefined)
     )
-    
+
     batch.set(taskRef, cleanTask)
   }
 
@@ -313,7 +343,7 @@ export async function createTasks(tasks: Omit<Task, "task_id" | "last_updated">[
 
 export async function updateTask(taskId: string, updates: Partial<Task>): Promise<void> {
   const db = getDb()
-  
+
   // Filter out undefined values to avoid Firestore errors
   const cleanUpdates = Object.fromEntries(
     Object.entries({
@@ -321,7 +351,7 @@ export async function updateTask(taskId: string, updates: Partial<Task>): Promis
       last_updated: serverTimestamp(),
     }).filter(([_, value]) => value !== undefined)
   )
-  
+
   await updateDoc(doc(db, "tasks", taskId), cleanUpdates)
 }
 
@@ -354,7 +384,7 @@ export function subscribeToTasks(projectId: string, callback: (tasks: Task[]) =>
     )
   } catch {
     callback([])
-    return () => {}
+    return () => { }
   }
 }
 
@@ -394,7 +424,7 @@ export function subscribeToMessages(projectId: string, callback: (messages: Chat
     )
   } catch {
     callback([])
-    return () => {}
+    return () => { }
   }
 }
 
@@ -457,7 +487,7 @@ export function subscribeToProjectMembers(memberIds: string[], callback: (member
     return () => unsubscribes.forEach((unsub) => unsub())
   } catch {
     callback([])
-    return () => {}
+    return () => { }
   }
 }
 
@@ -508,7 +538,7 @@ export function subscribeToMilestones(projectId: string, callback: (milestones: 
     )
   } catch {
     callback([])
-    return () => {}
+    return () => { }
   }
 }
 
@@ -540,7 +570,7 @@ export function subscribeToScheduleEvents(projectId: string, userId: string, cal
   try {
     const db = getDb()
     const q = query(
-      collection(db, "schedule_events"), 
+      collection(db, "schedule_events"),
       where("project_id", "==", projectId),
       where("user_id", "==", userId)
     )
@@ -566,7 +596,7 @@ export function subscribeToScheduleEvents(projectId: string, userId: string, cal
     )
   } catch {
     callback([])
-    return () => {}
+    return () => { }
   }
 }
 
@@ -597,30 +627,30 @@ export async function getWellnessSettings(projectId: string, userId: string): Pr
 }
 
 // Helper function to create default milestones for a project
-export async function createDefaultMilestones(projectId: string, duration: "24h" | "48h"): Promise<void> {
+export async function createDefaultMilestones(projectId: string, deadline: Date): Promise<void> {
   const db = getDb()
   const batch = writeBatch(db)
   const now = new Date()
-  const durationHours = duration === "24h" ? 24 : 48
+  const totalDuration = deadline.getTime() - now.getTime()
 
   const milestones = [
     {
       name: "Idea Finalization",
       description: "Complete idea analysis and feature planning",
       type: "idea_submission" as const,
-      deadline: new Date(now.getTime() + (durationHours * 0.2) * 60 * 60 * 1000), // 20% through
+      deadline: new Date(now.getTime() + totalDuration * 0.2), // 20% through
     },
     {
       name: "Prototype Development",
       description: "Build working prototype with core features",
       type: "prototype" as const,
-      deadline: new Date(now.getTime() + (durationHours * 0.7) * 60 * 60 * 1000), // 70% through
+      deadline: new Date(now.getTime() + totalDuration * 0.7), // 70% through
     },
     {
       name: "Final Presentation",
       description: "Complete project and prepare final presentation",
       type: "final_presentation" as const,
-      deadline: new Date(now.getTime() + durationHours * 60 * 60 * 1000), // End of hackathon
+      deadline: deadline, // End of hackathon
     },
   ]
 
@@ -642,7 +672,7 @@ export async function createDefaultMilestones(projectId: string, duration: "24h"
 export async function uploadResource(resource: Omit<SharedResource, "resource_id" | "created_at">): Promise<string> {
   const db = getDb()
   const resourceRef = doc(collection(db, "shared_resources"))
-  
+
   // Filter out undefined values to avoid Firestore errors
   const cleanResource = Object.fromEntries(
     Object.entries({
@@ -651,7 +681,7 @@ export async function uploadResource(resource: Omit<SharedResource, "resource_id
       created_at: serverTimestamp(),
     }).filter(([_, value]) => value !== undefined)
   )
-  
+
   await setDoc(resourceRef, cleanResource)
   return resourceRef.id
 }
@@ -684,7 +714,7 @@ export function subscribeToResources(projectId: string, callback: (resources: Sh
     })
   } catch {
     callback([])
-    return () => {}
+    return () => { }
   }
 }
 
@@ -692,7 +722,7 @@ export function subscribeToResources(projectId: string, callback: (resources: Sh
 export async function addActivity(activity: Omit<LiveActivity, "activity_id" | "timestamp">): Promise<void> {
   const db = getDb()
   const activityRef = doc(collection(db, "live_activities"))
-  
+
   // Filter out undefined values
   const cleanActivity = Object.fromEntries(
     Object.entries({
@@ -701,7 +731,7 @@ export async function addActivity(activity: Omit<LiveActivity, "activity_id" | "
       timestamp: serverTimestamp(),
     }).filter(([_, value]) => value !== undefined)
   )
-  
+
   await setDoc(activityRef, cleanActivity)
 }
 
@@ -709,7 +739,7 @@ export function subscribeToActivities(projectId: string, callback: (activities: 
   try {
     const db = getDb()
     const q = query(
-      collection(db, "live_activities"), 
+      collection(db, "live_activities"),
       where("project_id", "==", projectId)
     )
     return onSnapshot(q, (snapshot) => {
@@ -722,7 +752,7 @@ export function subscribeToActivities(projectId: string, callback: (activities: 
     })
   } catch {
     callback([])
-    return () => {}
+    return () => { }
   }
 }
 
@@ -730,7 +760,7 @@ export function subscribeToActivities(projectId: string, callback: (activities: 
 export async function createNotification(notification: Omit<TeamNotification, "notification_id" | "created_at">): Promise<void> {
   const db = getDb()
   const notificationRef = doc(collection(db, "team_notifications"))
-  
+
   // Filter out undefined values
   const cleanNotification = Object.fromEntries(
     Object.entries({
@@ -739,7 +769,7 @@ export async function createNotification(notification: Omit<TeamNotification, "n
       created_at: serverTimestamp(),
     }).filter(([_, value]) => value !== undefined)
   )
-  
+
   await setDoc(notificationRef, cleanNotification)
 }
 
@@ -747,7 +777,7 @@ export function subscribeToNotifications(projectId: string, userId: string, call
   try {
     const db = getDb()
     const q = query(
-      collection(db, "team_notifications"), 
+      collection(db, "team_notifications"),
       where("project_id", "==", projectId),
       where("user_id", "==", userId)
     )
@@ -761,7 +791,7 @@ export function subscribeToNotifications(projectId: string, userId: string, call
     })
   } catch {
     callback([])
-    return () => {}
+    return () => { }
   }
 }
 
@@ -782,11 +812,11 @@ export async function removeMemberFromProject(projectId: string, userId: string)
   // Remove user from project members array
   const projectRef = doc(db, "projects", projectId)
   const projectDoc = await getDoc(projectRef)
-  
+
   if (projectDoc.exists()) {
     const currentMembers = projectDoc.data().members || []
     const updatedMembers = currentMembers.filter((memberId: string) => memberId !== userId)
-    
+
     batch.update(projectRef, { members: updatedMembers })
   }
 

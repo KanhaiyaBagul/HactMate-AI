@@ -175,7 +175,7 @@ interface GeminiRequest {
     question?: string
     context?: string
     projectName?: string
-    duration?: string
+    deadline?: string
     techStack?: string
     description?: string
   }
@@ -314,7 +314,7 @@ export async function POST(request: NextRequest) {
           const prompt = `You are a hackathon project analyzer. Analyze this idea and return ONLY valid JSON.
 
 Idea: ${data.idea}
-Duration: ${data.duration || "24h"}
+Deadline: ${data.deadline ? new Date(data.deadline).toDateString() : "Next 48h"}
 
 Return this EXACT JSON structure with NO extra text:
 {
@@ -342,7 +342,7 @@ Return this EXACT JSON structure with NO extra text:
 
 Project: ${data.projectName}
 Features: ${data.features?.join(", ") || "Basic functionality"}
-Duration: ${data.duration}
+Deadline: ${data.deadline ? new Date(data.deadline).toDateString() : "Next 48h"}
 
 Return this EXACT JSON array with NO extra text:
 [

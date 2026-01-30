@@ -11,6 +11,8 @@ import {
   signInAnonymously,
   signOut,
   updateProfile,
+  sendPasswordResetEmail,
+  updatePassword,
 } from "firebase/auth"
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
 import { getFirebaseAuth, getFirebaseDb } from "./firebase"
@@ -41,6 +43,8 @@ interface AuthContextType {
   logout: () => Promise<void>
   updateUserSkills: (skills: string[]) => Promise<void>
   updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>
+  resetPassword: (email: string) => Promise<void>
+  updateUserPassword: (password: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -122,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDoc(doc(db, "users", user.uid), {
         ...profile,
         created_at: serverTimestamp(),
-      }).catch(() => {})
+      }).catch(() => { })
     }
   }
 
@@ -177,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth) return
 
     if (user && db) {
-      setDoc(doc(db, "users", user.uid), { online_status: false }, { merge: true }).catch(() => {})
+      setDoc(doc(db, "users", user.uid), { online_status: false }, { merge: true }).catch(() => { })
     }
     await signOut(auth)
     setUser(null)
@@ -189,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       setUserProfile((prev) => (prev ? { ...prev, skills } : null))
       if (db) {
-        setDoc(doc(db, "users", user.uid), { skills }, { merge: true }).catch(() => {})
+        setDoc(doc(db, "users", user.uid), { skills }, { merge: true }).catch(() => { })
       }
     }
   }
@@ -199,9 +203,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       setUserProfile((prev) => (prev ? { ...prev, ...updates } : null))
       if (db) {
-        setDoc(doc(db, "users", user.uid), updates, { merge: true }).catch(() => {})
+        setDoc(doc(db, "users", user.uid), updates, { merge: true }).catch(() => { })
       }
     }
+  }
+
+  const resetPassword = async (email: string) => {
+    const auth = getFirebaseAuth()
+    if (!auth) throw new Error("Auth not initialized")
+    await sendPasswordResetEmail(auth, email)
+  }
+
+  const updateUserPassword = async (password: string) => {
+    if (!user) throw new Error("No user logged in")
+    await updatePassword(user, password)
   }
 
   return (
@@ -217,6 +232,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         updateUserSkills,
         updateUserProfile,
+        resetPassword,
+        updateUserPassword,
       }}
     >
       {children}

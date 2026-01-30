@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -33,10 +34,19 @@ import {
   RefreshCw,
   AlertTriangle,
   FileText,
+  Settings,
+  Shield,
+  Key,
+  Mail,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatDistanceToNow } from "date-fns"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { CalendarIcon } from "lucide-react"
 
 type CreationStatus = "idle" | "creating" | "success" | "error"
 
@@ -51,13 +61,51 @@ export default function DashboardPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [joinDialogOpen, setJoinDialogOpen] = useState(false)
   const [newProjectName, setNewProjectName] = useState("")
-  const [newProjectDuration, setNewProjectDuration] = useState<"24h" | "48h">("24h")
+  // Default deadline: 48 hours from now
+  const [newProjectDeadline, setNewProjectDeadline] = useState<Date>(() => {
+    const d = new Date()
+    d.setHours(d.getHours() + 48)
+    return d
+  })
+  const [newProjectTime, setNewProjectTime] = useState(() => {
+    const d = new Date()
+    d.setHours(d.getHours() + 48)
+    return format(d, "HH:mm")
+  })
   const [joinCode, setJoinCode] = useState("")
   const [creationStatus, setCreationStatus] = useState<CreationStatus>("idle")
   const [creationMessage, setCreationMessage] = useState("")
   const [isJoining, setIsJoining] = useState(false)
   const [joiningMessage, setJoiningMessage] = useState("")
   const [isOfflineMode, setIsOfflineMode] = useState(false)
+
+  // Profile Settings
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false)
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
+  const [isSendingReset, setIsSendingReset] = useState(false)
+  const { updateUserPassword, resetPassword } = useAuth()
+
+  const handleResetEmail = async () => {
+    if (!user?.email) return
+    setIsSendingReset(true)
+    try {
+      await resetPassword(user.email)
+      toast({
+        title: "Email sent",
+        description: "Check your email (including spam) for password reset instructions.",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Failed to send",
+        description: error.message,
+        variant: "destructive"
+      })
+    } finally {
+      setIsSendingReset(false)
+    }
+  }
 
   useEffect(() => {
     if (!loading && !user) {
@@ -105,7 +153,12 @@ export default function DashboardPage() {
     setCreationMessage("Creating project...")
 
     try {
-      const projectId = await createProject(newProjectName.trim(), newProjectDuration, user.uid)
+      // Combine date and time
+      const [hours, minutes] = newProjectTime.split(":").map(Number)
+      const deadline = new Date(newProjectDeadline)
+      deadline.setHours(hours, minutes)
+
+      const projectId = await createProject(newProjectName.trim(), deadline, user.uid)
 
       setCreationStatus("success")
       setCreationMessage("Project created!")
@@ -192,6 +245,11 @@ export default function DashboardPage() {
       setCreationStatus("idle")
       setCreationMessage("")
       setNewProjectName("")
+      // Reset deadline to 48h from now
+      const d = new Date()
+      d.setHours(d.getHours() + 48)
+      setNewProjectDeadline(d)
+      setNewProjectTime(format(d, "HH:mm"))
     }
   }
 
@@ -207,6 +265,45 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     await logout()
     router.push("/")
+  }
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords do not match",
+        variant: "destructive"
+      })
+      return
+    }
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Must be at least 6 characters",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsUpdatingPassword(true)
+    try {
+      await updateUserPassword(newPassword)
+      toast({
+        title: "Password updated",
+        description: "You can now login with your new password.",
+      })
+      setNewPassword("")
+      setConfirmPassword("")
+      setProfileDialogOpen(false)
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message || "Please re-login and try again",
+        variant: "destructive"
+      })
+    } finally {
+      setIsUpdatingPassword(false)
+    }
   }
 
   if (loading) {
@@ -252,6 +349,10 @@ export default function DashboardPage() {
                 <span className="text-sm text-muted-foreground">{user.email}</span>
               </div>
             )}
+            <Button variant="outline" size="sm" onClick={() => setProfileDialogOpen(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
             <Button variant="ghost" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               Logout
@@ -259,6 +360,86 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
+
+      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Profile Settings</DialogTitle>
+            <DialogDescription>
+              Manage your account settings and security.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 pt-4">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-lg font-semibold border-b pb-2">
+                <Shield className="h-5 w-5" />
+                Security
+              </div>
+              <form onSubmit={handleUpdatePassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="New password"
+                    minLength={6}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    minLength={6}
+                    required
+                  />
+                </div>
+                <Button type="submit" disabled={isUpdatingPassword} className="w-full">
+                  {isUpdatingPassword ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Key className="h-4 w-4 mr-2" />
+                      Set/Update Password
+                    </>
+                  )}
+                </Button>
+              </form>
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleResetEmail}
+                disabled={isSendingReset}
+              >
+                {isSendingReset ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4 mr-2" />
+                )}
+                Send Password Reset Email
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -314,19 +495,41 @@ export default function DashboardPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="duration">Hackathon Duration</Label>
-                      <Select
-                        value={newProjectDuration}
-                        onValueChange={(v) => setNewProjectDuration(v as "24h" | "48h")}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select duration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="24h">24 Hours</SelectItem>
-                          <SelectItem value="48h">48 Hours</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label>Project Deadline</Label>
+                      <div className="flex gap-2">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "flex-1 justify-start text-left font-normal",
+                                !newProjectDeadline && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {newProjectDeadline ? format(newProjectDeadline, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={newProjectDeadline}
+                              onSelect={(date) => date && setNewProjectDeadline(date)}
+                              initialFocus
+                              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <Input
+                          type="time"
+                          value={newProjectTime}
+                          onChange={(e) => setNewProjectTime(e.target.value)}
+                          className="w-24"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Project will end on {newProjectDeadline && format(newProjectDeadline, "PP")} at {newProjectTime}
+                      </p>
                     </div>
                     <Button onClick={handleCreateProject} className="w-full" disabled={!newProjectName.trim()}>
                       Create Project
@@ -474,7 +677,15 @@ export default function DashboardPage() {
                         </CardDescription>
                       </div>
                       <Badge variant={project.demo_mode ? "default" : "secondary"}>
-                        {project.demo_mode ? "Demo Mode" : project.duration}
+                        {project.demo_mode
+                          ? "Demo Mode"
+                          : (() => {
+                            const now = new Date()
+                            const deadline = new Date(project.deadline)
+                            if (now > deadline) return "Ended"
+                            return `Ends ${formatDistanceToNow(deadline, { addSuffix: true })}`
+                          })()
+                        }
                       </Badge>
                     </div>
                   </CardHeader>
@@ -487,7 +698,10 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
-                          {project.duration}
+                          {(() => {
+                            const deadline = new Date(project.deadline)
+                            return deadline.toLocaleDateString()
+                          })()}
                         </div>
                       </div>
                       <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
