@@ -1,6 +1,6 @@
 # HackMate AI - Project Overview & User Flow
 
-## 🔄 User Flow Diagram
+## 🔄 flow digram
 
 ```mermaid
 graph TD
