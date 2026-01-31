@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { Tldraw, useEditor, createTLStore, defaultShapeUtils, TLRecord } from "tldraw"
+import dynamic from "next/dynamic" // Added dynamic import
+import { useEditor, createTLStore, defaultShapeUtils, TLRecord } from "tldraw" // Removed Tldraw from here
 import "tldraw/tldraw.css"
 import { subscribeToWhiteboard, updateWhiteboardShapes, subscribeToPresence, updatePresence } from "@/lib/firestore"
 import { Loader2, Cloud, CloudOff, MousePointer2 } from "lucide-react"
@@ -106,6 +107,19 @@ function CollaborativeCursors({ projectId }: { projectId: string }) {
         </>
     )
 }
+
+// -----------------------------------------------------------------------------
+// Dynamic Import for Tldraw (Critical for Production)
+// -----------------------------------------------------------------------------
+const Tldraw = dynamic(async () => (await import("tldraw")).Tldraw, {
+    ssr: false,
+    loading: () => (
+        <div className="h-full w-full flex items-center justify-center bg-gray-50">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading Whiteboard...</span>
+        </div>
+    )
+})
 
 // -----------------------------------------------------------------------------
 // Main Board Component
