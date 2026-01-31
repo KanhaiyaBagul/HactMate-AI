@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useRef } from "react"
 import dynamic from "next/dynamic" // Added dynamic import
-import { useEditor, createTLStore, defaultShapeUtils, TLRecord } from "tldraw" // Removed Tldraw from here
+import { useEditor, createTLStore, defaultShapeUtils, TLRecord } from "tldraw"
 import "tldraw/tldraw.css"
+import { ErrorBoundary } from "@/components/ui/error-boundary"
 import { subscribeToWhiteboard, updateWhiteboardShapes, subscribeToPresence, updatePresence } from "@/lib/firestore"
 import { Loader2, Cloud, CloudOff, MousePointer2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
@@ -160,7 +161,10 @@ export function BrainstormBoard({ projectId, readOnly = false }: BrainstormBoard
         if (readOnly) return
 
         const cleanup = store.listen(
-            async ({ changes }) => {
+            async ({ changes, source }) => {
+                // Critical Loop Prevention: Ignore remote changes
+                if (source === 'remote') return
+
                 setSyncStatus("syncing")
                 try {
                     // Tldraw 'updated' changes are [prev, next] tuples. We need 'next'.
@@ -192,6 +196,7 @@ export function BrainstormBoard({ projectId, readOnly = false }: BrainstormBoard
 
     return (
         <div className="h-[600px] w-full relative border rounded-xl overflow-hidden bg-white">
+            {/* Status Indicator (Keep outside ErrorBoundary so it shows even if crash) */}
             <div className="absolute top-2 right-2 z-50 flex items-center gap-2 px-3 py-1.5 bg-background/80 backdrop-blur border rounded-full text-xs shadow-sm select-none pointer-events-none">
                 {loading ? (
                     <>
@@ -222,9 +227,11 @@ export function BrainstormBoard({ projectId, readOnly = false }: BrainstormBoard
                 )}
             </div>
 
-            <Tldraw store={store}>
-                {!readOnly && <CollaborativeCursors projectId={projectId} />}
-            </Tldraw>
+            <ErrorBoundary>
+                <Tldraw store={store}>
+                    {!readOnly && <CollaborativeCursors projectId={projectId} />}
+                </Tldraw>
+            </ErrorBoundary>
         </div>
     )
 }
