@@ -156,7 +156,14 @@ export function BrainstormBoard({ projectId, readOnly = false }: BrainstormBoard
         return () => unsubscribe()
     }, [projectId, store])
 
-    // 2. Listen to local changes and push to Firestore
+    // 2. Listen to local changes and push to Firestore (Debounced)
+    const pendingChanges = useRef<{
+        added: Record<string, TLRecord>,
+        updated: Record<string, TLRecord>,
+        removed: Record<string, TLRecord>
+    }>({ added: {}, updated: {}, removed: {} })
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+
     useEffect(() => {
         if (readOnly) return
 
@@ -166,32 +173,81 @@ export function BrainstormBoard({ projectId, readOnly = false }: BrainstormBoard
                 if (source === 'remote') return
 
                 setSyncStatus("syncing")
-                try {
-                    // Tldraw 'updated' changes are [prev, next] tuples. We need 'next'.
-                    const updatedRecords: Record<string, TLRecord> = {}
-                    Object.values(changes.updated).forEach((change) => {
-                        // change is [prev, next], but let's be safe with casting
-                        const next = (change as unknown as [TLRecord, TLRecord])[1]
-                        if (next) {
-                            updatedRecords[next.id] = next
-                        }
-                    })
 
-                    await updateWhiteboardShapes(projectId, {
-                        added: changes.added,
-                        updated: updatedRecords,
-                        removed: changes.removed,
-                    })
-                    setSyncStatus("synced")
-                } catch (error) {
-                    console.error("Sync error:", error)
-                    setSyncStatus("error")
+                // 1. Merge changes into pending buffer
+                const pending = pendingChanges.current
+
+                // Handle Added
+                Object.values(changes.added).forEach(rec => {
+                    pending.added[rec.id] = rec
+                    delete pending.removed[rec.id] // Revived
+                })
+
+                // Handle Updated
+                Object.values(changes.updated).forEach((change) => {
+                    const next = (change as unknown as [TLRecord, TLRecord])[1]
+                    if (!next) return
+
+                    if (pending.added[next.id]) {
+                        // If it's in added buffer, just update the definition
+                        pending.added[next.id] = next
+                    } else {
+                        pending.updated[next.id] = next
+                        delete pending.removed[next.id]
+                    }
+                })
+
+                // Handle Removed
+                Object.values(changes.removed).forEach(rec => {
+                    if (pending.added[rec.id]) {
+                        // If we added it in this buffer, just forget it existed
+                        delete pending.added[rec.id]
+                    } else {
+                        delete pending.updated[rec.id] // Don't update if deleting
+                        pending.removed[rec.id] = rec
+                    }
+                })
+
+                // 2. Debounce flush (500ms)
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current)
                 }
+
+                timeoutRef.current = setTimeout(async () => {
+                    const payload = {
+                        added: { ...pending.added },
+                        updated: { ...pending.updated },
+                        removed: { ...pending.removed }
+                    }
+
+                    // Reset buffer immediately
+                    pendingChanges.current = { added: {}, updated: {}, removed: {} }
+                    timeoutRef.current = null
+
+                    try {
+                        const hasChanges =
+                            Object.keys(payload.added).length > 0 ||
+                            Object.keys(payload.updated).length > 0 ||
+                            Object.keys(payload.removed).length > 0
+
+                        if (hasChanges) {
+                            await updateWhiteboardShapes(projectId, payload)
+                        }
+                        setSyncStatus("synced")
+                    } catch (error) {
+                        console.error("Sync error:", error)
+                        setSyncStatus("error")
+                        // Optional: Retry logic could go here
+                    }
+                }, 500)
             },
             { source: "user", scope: "document" }
         )
 
-        return () => cleanup()
+        return () => {
+            cleanup()
+            if (timeoutRef.current) clearTimeout(timeoutRef.current)
+        }
     }, [projectId, store, readOnly])
 
     return (
