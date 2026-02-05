@@ -872,11 +872,16 @@ export async function updateWhiteboardShapes(projectId: string, updates: {
   const batch = writeBatch(db)
   const collectionRef = collection(db, "projects", projectId, "whiteboard")
 
+  // Helper to remove undefined values recursively
+  const cleanData = (data: any): any => {
+    return JSON.parse(JSON.stringify(data))
+  }
+
   // Handle Added
   if (updates.added) {
     Object.values(updates.added).forEach(record => {
       const docRef = doc(collectionRef, record.id)
-      batch.set(docRef, record)
+      batch.set(docRef, cleanData(record))
     })
   }
 
@@ -884,7 +889,7 @@ export async function updateWhiteboardShapes(projectId: string, updates: {
   if (updates.updated) {
     Object.values(updates.updated).forEach(record => {
       const docRef = doc(collectionRef, record.id)
-      batch.update(docRef, record)
+      batch.update(docRef, cleanData(record))
     })
   }
 
