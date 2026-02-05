@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/lib/auth-context"
 import { Toaster } from "@/components/ui/toaster"
+import { GlobalErrorReporter } from "@/components/global-error-reporter"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -31,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="overflow-y-scroll">
       <body className={`font-sans antialiased`}>
+        <GlobalErrorReporter />
         <AuthProvider>
           {children}
           <Toaster />
