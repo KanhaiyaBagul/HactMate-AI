@@ -54,10 +54,13 @@ function CollaborativeCursors({ projectId }: { projectId: string }) {
             const now = Date.now()
             if (now - lastBroadcastRef.current < 100) return
 
-            const { x, y } = editor.inputs.currentPagePoint
-            // Only update if on canvas (roughly)
-            // Using a simple check if x,y are valid numbers
-            if (!Number.isNaN(x) && !Number.isNaN(y)) {
+            const point = editor.inputs.currentPagePoint
+            if (!point) return // Defensive check
+
+            const { x, y } = point
+
+            // Only update if on canvas and valid numbers
+            if (typeof x === 'number' && typeof y === 'number' && !Number.isNaN(x) && !Number.isNaN(y)) {
                 updatePresence(projectId, user.uid, {
                     userId: user.uid,
                     userName: userProfile?.name || user.email?.split('@')[0] || "Anon",
@@ -121,6 +124,16 @@ const Tldraw = dynamic(async () => (await import("tldraw")).Tldraw, {
         </div>
     )
 })
+
+// Vercel fix for missing assets when clicking text tool
+const assetUrls = {
+    fonts: {
+        draw: "https://unpkg.com/@tldraw/assets@2.1.3/fonts/Shantell_Sans-Normal-SemiBold.woff2",
+        sans: "https://unpkg.com/@tldraw/assets@2.1.3/fonts/IBMPlexSans-Medium.woff2",
+        serif: "https://unpkg.com/@tldraw/assets@2.1.3/fonts/IBMPlexSerif-Medium.woff2",
+        mono: "https://unpkg.com/@tldraw/assets@2.1.3/fonts/IBMPlexMono-Medium.woff2",
+    },
+}
 
 // -----------------------------------------------------------------------------
 // Main Board Component
@@ -284,7 +297,7 @@ export function BrainstormBoard({ projectId, readOnly = false }: BrainstormBoard
             </div>
 
             <ErrorBoundary>
-                <Tldraw store={store}>
+                <Tldraw store={store} assetUrls={assetUrls}>
                     {!readOnly && <CollaborativeCursors projectId={projectId} />}
                 </Tldraw>
             </ErrorBoundary>
