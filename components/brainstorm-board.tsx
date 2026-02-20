@@ -143,27 +143,24 @@ export function BrainstormBoard({ projectId, readOnly = false }: BrainstormBoard
     const [loading, setLoading] = useState(true)
     const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error">("synced")
 
-    // 1. Subscribe to Firestore and update local store
+    // 1. Subscribe to Firestore and update local store natively using Deltas
     useEffect(() => {
         console.log(`[Brainstorm] Subscribing to whiteboard for project: ${projectId}`)
-        const unsubscribe = subscribeToWhiteboard(projectId, (records) => {
-            if (records.length > 0) {
+        const unsubscribe = subscribeToWhiteboard(projectId, (remoteChanges, isFirstLoad) => {
+            const { added, updated, removed } = remoteChanges
+
+            if (added.length > 0 || updated.length > 0 || removed.length > 0) {
                 store.mergeRemoteChanges(() => {
-                    const changes = {
-                        added: {} as Record<string, TLRecord>,
-                        updated: {} as Record<string, TLRecord>,
-                        removed: {} as Record<string, TLRecord>,
-                    }
-
-                    records.forEach((record: any) => {
-                        changes.added[record.id] = record
-                    })
-
-                    store.put(Object.values(changes.added))
+                    if (added.length > 0) store.put(added)
+                    if (updated.length > 0) store.put(updated)
+                    if (removed.length > 0) store.remove(removed as TLRecord['id'][])
                 })
             }
-            // Always stop loading after first update (even if empty)
-            setLoading(false)
+
+            // Only stop loading spinner once the first bulk load completes
+            if (isFirstLoad) {
+                setLoading(false)
+            }
         })
 
         return () => unsubscribe()

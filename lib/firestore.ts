@@ -848,17 +848,32 @@ export async function removeMemberFromProject(projectId: string, userId: string)
 
 // Whiteboard (tldraw)
 // We treat each shape/record as a document in a subcollection
-export function subscribeToWhiteboard(projectId: string, callback: (records: any[]) => void) {
+export function subscribeToWhiteboard(
+  projectId: string,
+  callback: (changes: { added: any[]; updated: any[]; removed: string[] }, isFirstLoad: boolean) => void
+) {
   try {
     const db = getDb()
     const q = query(collection(db, "projects", projectId, "whiteboard"))
 
+    let isFirstLoad = true
+
     return onSnapshot(q, (snapshot) => {
-      const records = snapshot.docs.map(doc => doc.data())
-      callback(records)
+      const added: any[] = []
+      const updated: any[] = []
+      const removed: string[] = []
+
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") added.push(change.doc.data())
+        if (change.type === "modified") updated.push(change.doc.data())
+        if (change.type === "removed") removed.push(change.doc.id)
+      })
+
+      callback({ added, updated, removed }, isFirstLoad)
+      isFirstLoad = false
     })
   } catch {
-    callback([])
+    callback({ added: [], updated: [], removed: [] }, true)
     return () => { }
   }
 }
