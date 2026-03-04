@@ -149,6 +149,17 @@ export interface ChatMessage {
   timestamp: Date
 }
 
+export interface TeamMessage {
+  message_id: string
+  project_id: string
+  sender_id: string
+  sender_name: string      // Stored at write time to avoid extra reads per message
+  sender_initial: string   // e.g. "K" for display avatar
+  content: string
+  type: "text"
+  timestamp: Date
+}
+
 export interface IdeaAnalysis {
   problem_statement: string
   target_users: string[]

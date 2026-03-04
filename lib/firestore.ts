@@ -1,5 +1,7 @@
 import {
   collection,
+  orderBy,
+  limit,
   doc,
   setDoc,
   getDoc,
@@ -14,7 +16,7 @@ import {
   writeBatch,
 } from "firebase/firestore"
 import { getFirebaseDb } from "./firebase"
-import type { Project, Task, ChatMessage, ProjectMember, SharedResource, LiveActivity, TeamNotification, Milestone, ScheduleEvent, WellnessSettings } from "./types"
+import type { Project, Task, ChatMessage, TeamMessage, ProjectMember, SharedResource, LiveActivity, TeamNotification, Milestone, ScheduleEvent, WellnessSettings } from "./types"
 
 function getDb() {
   const db = getFirebaseDb()
@@ -924,5 +926,48 @@ export async function updatePresence(projectId: string, userId: string, presence
     await setDoc(docRef, { ...presence, lastActive: serverTimestamp() }, { merge: true })
   } catch (error) {
     // Silent fail for presence updates to avoid console spam
+  }
+}
+
+// --- TEAM CHAT ---
+// Human-to-human real-time chat (separate from AI mentor chat)
+// Collection: /projects/{projectId}/team_chats
+
+export async function sendTeamMessage(
+  projectId: string,
+  message: { sender_id: string; sender_name: string; sender_initial: string; content: string }
+): Promise<void> {
+  const db = getDb()
+  const msgRef = doc(collection(db, "projects", projectId, "team_chats"))
+  await setDoc(msgRef, {
+    message_id: msgRef.id,
+    project_id: projectId,
+    ...message,
+    type: "text",
+    timestamp: serverTimestamp(),
+  })
+}
+
+export function subscribeToTeamMessages(
+  projectId: string,
+  callback: (messages: TeamMessage[]) => void
+) {
+  try {
+    const db = getDb()
+    const q = query(
+      collection(db, "projects", projectId, "team_chats"),
+      orderBy("timestamp", "asc"),
+      limit(100)
+    )
+    return onSnapshot(q, (snap) => {
+      const msgs = snap.docs.map((d) => ({
+        ...d.data(),
+        timestamp: d.data().timestamp?.toDate() ?? new Date(),
+      })) as TeamMessage[]
+      callback(msgs)
+    })
+  } catch {
+    callback([])
+    return () => { }
   }
 }

@@ -70,6 +70,11 @@ const BrainstormBoard = dynamic(
   () => import("@/components/brainstorm-board").then((mod) => mod.BrainstormBoard),
   { ssr: false }
 )
+
+const TeamChat = dynamic(
+  () => import("@/components/team-chat").then((mod) => mod.TeamChat),
+  { ssr: false }
+)
 import {
   ArrowLeft,
   Lightbulb,
@@ -119,7 +124,7 @@ interface RetryState {
 export default function ProjectPage() {
   const params = useParams()
   const router = useRouter()
-  const { user, loading: authLoading, updateUserProfile } = useAuth()
+  const { user, userProfile, loading: authLoading, updateUserProfile } = useAuth()
   const { toast } = useToast()
   const projectId = params.id as string
 
@@ -2582,7 +2587,19 @@ export default function ProjectPage() {
           </div>
         </Tabs>
       </main>
-    </div >
+
+      {/* Floating Team Chat Widget — always visible regardless of active tab */}
+      {user && (
+        <TeamChat
+          projectId={projectId}
+          currentUser={{
+            uid: user.uid,
+            name: userProfile?.name || user.email?.split("@")[0] || "Team Member",
+          }}
+          members={members}
+        />
+      )}
+    </div>
   )
 }
 function DroppableColumn({
