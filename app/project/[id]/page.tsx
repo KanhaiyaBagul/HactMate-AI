@@ -39,7 +39,8 @@ import {
   markNotificationRead,
   deleteProject,
   deleteResource,
-  removeMemberFromProject,
+  removeMember,
+  leaveProject,
 } from "@/lib/firestore"
 import type { Project, Task, ChatMessage, IdeaAnalysis, ProjectMember, TeamAnalytics, SharedResource, LiveActivity, TeamNotification } from "@/lib/types"
 import { Button } from "@/components/ui/button"
@@ -113,6 +114,7 @@ import {
   Eye,
   Download,
   Trash,
+  LogOut,
 } from "lucide-react"
 
 interface RetryState {
@@ -191,6 +193,10 @@ export default function ProjectPage() {
   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null)
   const [removeConfirmText, setRemoveConfirmText] = useState("")
   const [isRemovingMember, setIsRemovingMember] = useState(false)
+
+  // Leave project state
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
+  const [isLeavingProject, setIsLeavingProject] = useState(false)
 
   // Collaboration state
   const [resourceDialogOpen, setResourceDialogOpen] = useState(false)
@@ -914,6 +920,32 @@ export default function ProjectPage() {
     }
   }
 
+  const handleLeaveProject = async () => {
+    if (!user || !project) return
+
+    setIsLeavingProject(true)
+    try {
+      const isOwner = project.created_by === user.uid
+      await leaveProject(projectId, user.uid, isOwner, members.length)
+
+      toast({
+        title: "Project left",
+        description: "You have successfully left the project.",
+      })
+      router.push("/dashboard")
+    } catch (error: any) {
+      console.error("Leave project error:", error)
+      toast({
+        title: "Action failed",
+        description: error.message || "Failed to leave project.",
+        variant: "destructive",
+      })
+      setLeaveDialogOpen(false)
+    } finally {
+      setIsLeavingProject(false)
+    }
+  }
+
   const handleDeleteResource = async (resource: SharedResource) => {
     if (!user) return
 
@@ -998,7 +1030,7 @@ export default function ProjectPage() {
 
     setIsRemovingMember(true)
     try {
-      await removeMemberFromProject(projectId, memberToRemove.user_id)
+      await removeMember(projectId, memberToRemove.user_id)
 
       // Add activity
       await addActivity({
@@ -1241,7 +1273,7 @@ export default function ProjectPage() {
                   Demo Mode
                 </Label>
               </div>
-              {project.created_by === user?.uid && (
+              {project.created_by === user?.uid ? (
                 <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
@@ -1308,6 +1340,40 @@ export default function ProjectPage() {
                           )}
                         </Button>
                       </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              ) : (
+                <Dialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" title="Leave Project">
+                      <LogOut className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="text-red-600">Leave Project</DialogTitle>
+                      <DialogDescription>
+                        Are you sure you want to leave <strong>{project.name}</strong>?
+                        You will lose access to all tasks, chats, and files. You'll need a new join code to come back.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <Button
+                        variant="destructive"
+                        onClick={handleLeaveProject}
+                        disabled={isLeavingProject}
+                        className="w-full"
+                      >
+                        {isLeavingProject ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Yes, Leave Project
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </DialogContent>
                 </Dialog>

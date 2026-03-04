@@ -13,6 +13,7 @@ import {
   onSnapshot,
   serverTimestamp,
   arrayUnion,
+  arrayRemove,
   writeBatch,
 } from "firebase/firestore"
 import { getFirebaseDb } from "./firebase"
@@ -277,6 +278,35 @@ export function subscribeToProject(projectId: string, callback: (project: Projec
     callback(null)
     return () => { }
   }
+}
+
+export async function removeMember(projectId: string, userId: string): Promise<void> {
+  const db = getDb()
+  const batch = writeBatch(db)
+
+  // 1. Remove UID from the main members array
+  batch.update(doc(db, "projects", projectId), {
+    members: arrayRemove(userId),
+  })
+
+  // 2. Delete the member's project_roles document
+  batch.delete(doc(db, "project_roles", `${projectId}_${userId}`))
+
+  await batch.commit()
+}
+
+export async function leaveProject(projectId: string, userId: string, isOwner: boolean, memberCount: number): Promise<void> {
+  if (isOwner && memberCount > 1) {
+    throw new Error("As the project owner, you cannot leave while other members remain. You must transfer ownership first or be the last member.")
+  }
+
+  // If owner is the last one, we could delete the project. 
+  // But let's keep it safe: they should use the "Delete Project" button instead.
+  if (isOwner && memberCount === 1) {
+    throw new Error("You are the last member. Please use 'Delete Project' in settings instead.")
+  }
+
+  await removeMember(projectId, userId)
 }
 
 // Tasks
