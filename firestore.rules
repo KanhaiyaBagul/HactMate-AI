@@ -48,6 +48,9 @@ service cloud.firestore {
       match /whiteboard/{shapeId} {
         allow read, write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/projects/$(projectId)).data);
       }
+      match /team_chats/{msgId} {
+        allow read, write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/projects/$(projectId)).data);
+      }
       match /presence/{userId} {
         allow read, write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/projects/$(projectId)).data);
       }
