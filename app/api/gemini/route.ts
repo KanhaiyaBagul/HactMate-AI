@@ -155,10 +155,10 @@ const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY!
  * Gemini free is LAST because it rate-limits a lot
  */
 const FREE_MODELS = [
-  "meta-llama/llama-3.2-3b-instruct:free",
-  "mistralai/mistral-7b-instruct:free",
-  "huggingfaceh4/zephyr-7b-beta:free",
-  "google/gemini-2.0-flash-exp:free",
+  "google/gemini-2.0-flash-lite-preview-02-05:free",
+  "mistralai/mistral-nemo:free",
+  "qwen/qwen-2.5-coder-32b-instruct:free",
+  "openrouter/free"
 ]
 
 /**
